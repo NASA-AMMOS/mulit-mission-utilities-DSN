@@ -300,6 +300,7 @@ def convert_dsn_stationallocation_to_gql(plan_id: int, plan_start_time:datetime.
       'type': 'DSN_Track'
     }
 
+
 if __name__ == "__main__":
     logging.basicConfig()
     root_logger = logging.getLogger()
@@ -311,4 +312,4 @@ if __name__ == "__main__":
 
     parser = DsnStationAllocationFileDecoder("../../M20_20230_20272_TEST.SAF")
     for record in parser.parse():
-      root_logger.info("GraphQL insert: %s", convert_dsn_stationallocation_to_gql(0, datetime.datetime.utcnow(), parser.header_hash, record))
+        root_logger.info("GraphQL insert: %s", convert_dsn_stationallocation_to_gql(0, datetime.datetime.utcnow(), parser.header_hash, record))
