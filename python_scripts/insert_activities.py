@@ -27,7 +27,7 @@ plan_id = int(args.plan_id)
 # Logging to console
 logging.basicConfig()
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
+root_logger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,13 @@ for file in station_allocation_files:
 for file in view_period_files:
     decoders.append(DsnViewPeriodPredLegacyDecoder(file))
 
+
 gql = GqlInterface(plan_id, plan_start_formatted, connection_string=api_url)
+
 activities = gql.mux_files(decoders)
 gql.insert_activities(activities)
+
+# TODO Buffer records
+#while len(activities) > 0:
+#    gql.insert_activities(activities)
+#    activities = gql.mux_files(decoders)

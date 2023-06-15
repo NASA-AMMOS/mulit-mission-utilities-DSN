@@ -279,7 +279,7 @@ class GqlInterface(object):
             },
             verify=False
         )
-        logger.debug(json.dumps(response.json()), indent=2)
+        logger.debug(json.dumps(response.json(), indent=2))
 
     @classmethod
     def convert_to_aerie_offset(cls, plan_start_time: datetime.datetime, activity_start_time: datetime.datetime) -> str:
