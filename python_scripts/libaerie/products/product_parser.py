@@ -201,91 +201,114 @@ class DsnStationAllocationFileDecoder(object):
         return datetime.timedelta(hours=hh, minutes=mm, seconds=ssz)
 
 
-def parse_shadow_line(plan_start_formatted, line):
-    date_format = '%Y-%j/%H:%M:%S'
+def convert_to_aerie_offset(plan_start_time: datetime.datetime, activity_start_time: datetime.datetime) -> str:
 
-    start_time, stop_time = re.findall("\d{4}[-]\d{3}[/]\d{2}[:]\d{2}[:]\d{2}", line)
-    activity_start_formatted = datetime.datetime.strptime(start_time, date_format)
-    start_offset_seconds = datetime.timedelta.total_seconds(activity_start_formatted - plan_start_formatted)
+    start_offset_seconds = datetime.timedelta.total_seconds(activity_start_time - plan_start_time)
     hours_offset = start_offset_seconds // 3600
     start_offset_seconds -= hours_offset * 3600
     minutes_offset = start_offset_seconds // 60
     start_offset_seconds -= minutes_offset * 60
 
     start_offset = '{}:{}:{}'.format(int(hours_offset), int(minutes_offset), start_offset_seconds)
-    # duration is in microseconds in Aerie UI, in min in shadow file
-    duration = re.findall("\d{1,}[.]\d{3}", line)[0]
-    duration = float(duration) * 6e7
-    duration = int(duration)
 
-    if "Penumbra" in line:
-        shadow_type = "PENUMBRA"
-    else:
-        shadow_type = "UMBRA"
-
-    return shadow_type, start_offset, duration
+    return start_offset
 
 
-def parse_shadows(plan_start_formatted, plan_id=None, shadow_file_names=[]):
-    shadow_activities = []
+def convert_to_aerie_duration(activity_start_time: datetime.datetime, activity_end_time: datetime.datetime) -> int:
 
-    for file_name in shadow_file_names:
-        sc_id = re.findall("(MMS\d{1})", file_name)[0]
-        name = "IN_SHADOW"
+    return int((activity_end_time - activity_start_time).total_seconds() * 1e6)
 
-        with open(file_name) as f:
-            for i in range(12):
-                next(f)
-            j = 0
 
-            last_type, start_offset_total, duration_total = parse_shadow_line(plan_start_formatted, f.readline())
+def convert_dsn_viewperiod_to_gql(plan_id: int, plan_start_time: datetime.datetime, header_segs: dict, event_segs: dict) -> dict:
 
-            for line in f:
+    # Get event fields
+    start_offset = convert_to_aerie_offset(plan_start_time, event_segs["Time"])
+    mission_name = header_segs["MISSION_NAME"]
+    spacecraft_name = header_segs["SPACECRAFT_NAME"]
+    naif_spacecraft_id = -header_segs["DSN_SPACECRAFT_NUM"]
+    dsn_spacecraft_id = header_segs["DSN_SPACECRAFT_NUM"]
+    station_receive_time_utc = event_segs["Time"].isoformat()
+    viewperiod_event = event_segs["Event"]
+    station_identifier = event_segs["Station_identifier"]
+    pass_number = event_segs["Pass"]
+    azimuth_degrees = event_segs["Azimuth"]
+    elevation_degrees = event_segs["Elevation"]
+    lha_x_degrees = event_segs["AZ_LHA_X"]
+    dec_y_degrees = event_segs["EL_DEC_Y"]
+    duration = event_segs["RTLT"].total_seconds() * 1e6
 
-                shadow_type, start_offset, duration = parse_shadow_line(plan_start_formatted, line)
+    return {
+      'arguments': {
+        'mission_name': mission_name,
+        'spacecraft_name': spacecraft_name,
+        'NAIF_spacecraft_ID': naif_spacecraft_id,
+        'dsn_spacecraft_ID': dsn_spacecraft_id,
+        'station_receive_time_UTC': station_receive_time_utc,
+        'viewperiod_event': viewperiod_event,
+        'station_identifier': station_identifier,
+        'pass_number': pass_number,
+        'azimuth_degrees': azimuth_degrees,
+        'elevation_degrees': elevation_degrees,
+        'lha_X_degrees': lha_x_degrees,
+        'dec_Y_degrees': dec_y_degrees,
+        'duration': duration
+      },
+      'plan_id': plan_id,
+      'name': 'DSN View Period',
+      'start_offset': start_offset,
+      'type': 'DSN_View_Period'
+    }
 
-                if last_type != shadow_type:
-                    last_type = shadow_type
-                    duration_total += duration
-                    if start_offset_total is None:
-                        start_offset_total = start_offset
-                else:
-                    shadow_activities.append({
-                        'arguments': {
-                            'scId': sc_id,
-                            'in_shadow_duration': duration_total,
-                            'shadowType': "IN_SHADOW"
-                        },
-                        'plan_id': plan_id,
-                        'name': name,
-                        'start_offset': start_offset_total,
-                        'type': 'InShadow'
-                    })
-                    start_offset_total = None
-                    duration_total = 0
 
-            shadow_activities.append({
-                'arguments': {
-                    'scId': sc_id,
-                    'in_shadow_duration': duration_total,
-                    'shadowType': "IN_SHADOW"
-                },
-                'plan_id': plan_id,
-                'name': name,
-                'start_offset': start_offset_total,
-                'type': 'InShadow'
-            })
+def convert_dsn_stationallocation_to_gql(plan_id: int, plan_start_time:datetime.datetime, header_segs: dict, event_segs: dict) -> dict:
 
-    return shadow_activities
+    # Get event fields
+    start_offset = convert_to_aerie_offset(plan_start_time, event_segs["SOA"])
+    mission_name = header_segs["MISSION_NAME"]
+    spacecraft_name = header_segs["SPACECRAFT_NAME"]
+    naif_spacecraft_id = -header_segs["DSN_SPACECRAFT_NUM"]
+    dsn_spacecraft_id = header_segs["DSN_SPACECRAFT_NUM"]
+    pass_type = event_segs["Description"]
+    soa = event_segs["SOA"].isoformat()
+    bot = event_segs["BOT"].isoformat()
+    eot = event_segs["EOT"].isoformat()
+    eoa = event_segs["EOA"].isoformat()
+    antenna_id = event_segs["Antenna_id"]
+    duration_of_activity = convert_to_aerie_duration(event_segs["SOA"], event_segs["EOA"])
+    start_of_track = event_segs["BOT"].isoformat()
+    duration_of_track = convert_to_aerie_duration(event_segs["BOT"], event_segs["EOT"])
 
+    return {
+      'arguments': {
+        'mission_name': mission_name,
+        'spacecraft_name': spacecraft_name,
+        'NAIF_spacecraft_ID': naif_spacecraft_id,
+        'dsn_spacecraft_ID': dsn_spacecraft_id,
+        'pass_type': pass_type,
+        'SOA': soa,
+        'BOT': bot,
+        'EOT': eot,
+        'EOA': eoa,
+        'antenna_ID': antenna_id,
+        'duration_of_activity': duration_of_activity,
+        'start_of_track': start_of_track,
+        'duration_of_track': duration_of_track
+      },
+      'plan_id': plan_id,
+      'name': 'DSN Track',
+      'start_offset': start_offset,
+      'type': 'DSN_Track'
+    }
 
 if __name__ == "__main__":
     logging.basicConfig()
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
+    root_logger.setLevel(logging.INFO)
 
-    for record in DsnViewPeriodPredLegacyDecoder("../../M20_20223_20284_TEST.VP").parse():
-        pass
+    parser = DsnViewPeriodPredLegacyDecoder("../../M20_20223_20284_TEST.VP")
+    for record in parser.parse():
+        root_logger.info("GraphQL insert: %s", convert_dsn_viewperiod_to_gql(0, datetime.datetime.utcnow(), parser.header_hash, record))
 
-    for record in DsnStationAllocationFileDecoder("../../M20_20230_20272_TEST.SAF").parse():
-        pass
+    parser = DsnStationAllocationFileDecoder("../../M20_20230_20272_TEST.SAF")
+    for record in parser.parse():
+      root_logger.info("GraphQL insert: %s", convert_dsn_stationallocation_to_gql(0, datetime.datetime.utcnow(), parser.header_hash, record))
