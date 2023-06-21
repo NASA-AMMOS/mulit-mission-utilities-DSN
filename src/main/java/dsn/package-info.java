@@ -6,8 +6,8 @@
 package dsn;
 
 
-import dsn.activities.gnc.DSN_Track;
-import dsn.activities.gnc.DSN_View_Period;
+import dsn.activities.DSN_Track;
+import dsn.activities.DSN_View_Period;
 import gov.nasa.jpl.aerie.contrib.serialization.rulesets.BasicValueMappers;
 import gov.nasa.jpl.aerie.merlin.framework.annotations.MissionModel;
 import gov.nasa.jpl.aerie.merlin.framework.annotations.MissionModel.WithActivityType;

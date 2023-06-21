@@ -1,4 +1,4 @@
-package dsn.models.gnc;
+package dsn.models;
 
 public enum ViewPeriodType {
   RISE,

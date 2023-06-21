@@ -1,4 +1,4 @@
-package dsn.activities.gnc;
+package dsn.activities;
 
 import dsn.Mission;
 import gov.nasa.jpl.aerie.merlin.framework.annotations.ActivityType;
