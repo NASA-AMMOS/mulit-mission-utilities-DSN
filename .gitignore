@@ -1,5 +1,6 @@
 # https://git-scm.com/docs/gitignore
 
+.idea
 .DS_Store
 .gradle
 bin
