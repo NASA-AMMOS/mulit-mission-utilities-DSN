@@ -12,16 +12,18 @@ from libaerie.products.product_parser import GqlInterface, DsnStationAllocationF
 date_format = '%Y-%j/%H:%M:%S'
 parser = argparse.ArgumentParser()
 
-parser.add_argument('plan_id', help="plan ID to ingest activity directives into") # positional argument
+# Positional argument
+parser.add_argument('plan_id', type=int, help="plan ID to ingest activity directives into")
 parser.add_argument('plan_start_date', help="Start date of plan in 'YYYY-DOY/HH:MM:SS'")
+
+# Optional arguments
 parser.add_argument('-p', '--vp_file', action='append', dest='vp', default=[], help="Filepath to a DSN View Period file")
 parser.add_argument('-s', '--sa_file', action='append', dest='sa', default=[], help="Filepath to a DSN Station Allocation file")
 parser.add_argument('-a', '--connection_string', default=GqlInterface.DEFAULT_CONNECTION_STRING, help="http://<ip_address>:<port> connection string to graphql database")
+parser.add_argument('-b', '--buffer_length', default=None, dest='buffer', type=int, help="Integer length of the buffer used to parse products, use if parsing large files")
 
 args = parser.parse_args()
 
-view_period_files = args.vp
-station_allocation_files = args.sa
 plan_id = int(args.plan_id)
 
 # Logging to console
@@ -38,30 +40,36 @@ except Exception as e:
     logger.fatal("Invalid date: expected format '%s', got '%s'", date_format, args.plan_start_date)
     exit(1)
 
-for file in station_allocation_files:
-    if not os.path.isfile(file):
-        logger.fatal("File '%s' does not exist", file)
-
-for file in view_period_files:
-    if not os.path.isfile(file):
-        logger.fatal("File '%s' does not exist", file)
-
-api_url = args.connection_string
-
 decoders = []
 
-for file in station_allocation_files:
-    decoders.append(DsnStationAllocationFileDecoder(file))
-for file in view_period_files:
-    decoders.append(DsnViewPeriodPredLegacyDecoder(file))
+for file in args.sa:
+    try:
+        decoders.append(DsnStationAllocationFileDecoder(file))
+    except FileNotFoundError as fnfe:
+        logger.fatal(str(fnfe))
+        exit(1)
+for file in args.vp:
+    try:
+        decoders.append(DsnViewPeriodPredLegacyDecoder(file))
+    except FileNotFoundError as fnfe:
+        logger.fatal(str(fnfe))
+        exit(1)
 
+# Setup GQL
+gql = GqlInterface(plan_id, plan_start_formatted, connection_string=args.connection_string)
 
-gql = GqlInterface(plan_id, plan_start_formatted, connection_string=api_url)
+buffer_len = args.buffer
+activities = []
 
-activities = gql.mux_files(decoders)
-gql.insert_activities(activities)
+for activity in gql.mux_files(decoders):
+    activities.append(activity)
 
-# TODO Buffer records
-#while len(activities) > 0:
-#    gql.insert_activities(activities)
-#    activities = gql.mux_files(decoders)
+    # Check if Buffer is filled
+    if buffer_len is not None and len(activities) >= buffer_len:
+        logger.debug("Buffer filled with %s records", len(activities))
+        gql.create_activities(activities)
+
+        # Remove items from buffer
+        activities.clear()
+
+gql.create_activities(activities)

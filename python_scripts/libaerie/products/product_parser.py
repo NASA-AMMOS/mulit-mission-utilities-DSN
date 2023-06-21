@@ -5,8 +5,17 @@ import logging
 import requests
 import json
 
+from abc import ABC, abstractmethod
 
-class DsnViewPeriodPredLegacyDecoder(object):
+
+class Decoder(ABC):
+
+    @abstractmethod
+    def parse(self):
+        pass
+
+
+class DsnViewPeriodPredLegacyDecoder(Decoder):
 
     HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
     EVENT_TIME_FORMAT = "%y %j/%H:%M:%S"
@@ -105,7 +114,7 @@ class DsnViewPeriodPredLegacyDecoder(object):
         return datetime.timedelta(hours=hh, minutes=mm, seconds=ssz)
 
 
-class DsnStationAllocationFileDecoder(object):
+class DsnStationAllocationFileDecoder(Decoder):
 
     HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
     EVENT_TIME_FORMAT = "%y %j%H%M"
@@ -215,13 +224,19 @@ class DsnStationAllocationFileDecoder(object):
         return datetime.timedelta(hours=hh, minutes=mm, seconds=ssz)
 
 
+class Encoder(ABC):
+
+    @abstractmethod
+    def cast(self, obj):
+        pass
+
+
 class GqlInterface(object):
 
-    QUERY_BUFFER_LIMIT = None
     INSERT_ACTIVITY_QUERY = '''mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } } '''
     DEFAULT_CONNECTION_STRING = 'http://localhost:8080/v1/graphql'
 
-    def __init__(self, plan_id: int, plan_start: datetime.datetime, connection_string: str=DEFAULT_CONNECTION_STRING, buffer_limit: int=QUERY_BUFFER_LIMIT):
+    def __init__(self, plan_id: int, plan_start: datetime.datetime, connection_string: str=DEFAULT_CONNECTION_STRING):
 
         assert(isinstance(plan_id, int))
         assert(isinstance(plan_start, datetime.datetime))
@@ -233,38 +248,27 @@ class GqlInterface(object):
         self.__connection_string = connection_string
 
         logger.info("GraphQL Config: plan_id: %s, api_conn: %s", plan_id, connection_string)
-        self.buffer_limit = buffer_limit
 
-    def mux_files(self, decoders: list) -> list:
+    def mux_files(self, decoders: list) -> dict:
 
         assert(isinstance(decoders, list))
-
         logger = logging.getLogger(__name__)
 
-        r = []
         for decoder in decoders:
 
             if isinstance(decoder, DsnViewPeriodPredLegacyDecoder):
                 for record in decoder.parse():
-                    r.append(self.convert_dsn_viewperiod_to_gql(self.__plan_id, self.__plan_start, decoder.header_hash, record))
-
-                    if self.buffer_limit is not None and len(r) >= self.buffer_limit:
-                        logger.debug("Buffer filled with %s records, recall mux_files() to continue", len(r))
-                        return r
+                    yield self.convert_dsn_viewperiod_to_gql(self.__plan_id, self.__plan_start, decoder.header_hash, record)
 
             elif isinstance(decoder, DsnStationAllocationFileDecoder):
                 for record in decoder.parse():
-                    r.append(self.convert_dsn_stationallocation_to_gql(self.__plan_id, self.__plan_start, decoder.header_hash, record))
+                    yield self.convert_dsn_stationallocation_to_gql(self.__plan_id, self.__plan_start, decoder.header_hash, record)
 
-                    if self.buffer_limit is not None and len(r) >= self.buffer_limit:
-                        logger.debug("Buffer filled with %s records, recall mux_files() to continue", len(r))
-                        return r
             else:
                 logger.error("Aborting, Got invalid Decoder type: %s", type(decoder).__name__)
                 raise ValueError("Invalid Decoder type: %s", type(decoder).__name__)
-        return r
 
-    def insert_activities(self, activities: list):
+    def create_activities(self, activities: list):
 
         assert isinstance(activities, list)
 
