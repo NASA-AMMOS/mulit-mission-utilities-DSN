@@ -5,6 +5,7 @@ import logging
 import requests
 import json
 
+from collections.abc import Iterable
 from abc import ABC, abstractmethod
 
 
@@ -29,7 +30,7 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
             logging.error("DSN Viewperiod file not found: '%s'", filename)
             raise FileNotFoundError("DSN Viewperiod file not found: %s" % filename)
 
-        logger.info("Opening DSN Viewperiod file: %s", filename)
+        logger.info("Opening DSN Viewperiod file for Decoding: %s", filename)
         try:
             self._fh = open(filename, "r")
         except Exception as e:
@@ -77,12 +78,22 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
 
         return result.groupdict()
 
+    def read_header(self) -> dict:
+
+        if self.header_hash is not None:
+            return self.header_hash
+
+        header = self.parse_header([next(self._fh) for _ in range(11)])
+        self.header_hash = header
+
+        return header
+
     def parse(self):
 
         logger = logging.getLogger(__name__)
         logger.info("Parsing DSN View Period File: %s", self._fh.name)
 
-        self.header_hash = self.parse_header([next(self._fh) for _ in range(11)])
+        self.read_header()
 
         num_r = 0
 
@@ -119,7 +130,7 @@ class DsnStationAllocationFileDecoder(Decoder):
     HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
     EVENT_TIME_FORMAT = "%y %j%H%M"
 
-    EVENT_RECORD_REGEX = "(?P<Change_indictor>.)(?P<YYDOY>.{6}).(?P<SOA>.{4}).(?P<BOT>.{4}).(?P<EOT>.{4}).(?P<EOA>.{4}).(?P<Antenna_id>.{6}).(?P<Project_id>.{5}).(?P<Description>.{16}).(?P<Pass>.{4}).(?P<Config_code>.{6})(?P<SOE_flag>.).(?P<Work_code_cat>.{3}).(?P<Relate>.)."
+    EVENT_RECORD_REGEX = "(?P<CHANGE_INDICATOR>.)(?P<YY>.{2}).(?P<DOY>.{3}).(?P<SOA>.{4}).(?P<BOT>.{4}).(?P<EOT>.{4}).(?P<EOA>.{4}).(?P<ANTENNA_ID>.{6}).(?P<PROJECT_ID>.{5}).(?P<DESCRIPTION>.{16}).(?P<PASS>.{4}).(?P<CONFIG_CODE>.{6})(?P<SOE_FLAG>.).(?P<WORK_CODE_CAT>.{3}).(?P<RELATE>.)."
 
     def __init__(self, filename: str):
         logger = logging.getLogger(__name__)
@@ -128,7 +139,7 @@ class DsnStationAllocationFileDecoder(Decoder):
             logging.error("DSN Station Allocation file not found: '%s'", filename)
             raise FileNotFoundError("DSN Station Allocation file not found: %s" % filename)
 
-        logger.info("Opening DSN Station Allocation file: %s", filename)
+        logger.info("Opening DSN Station Allocation file for Decoding: %s", filename)
         try:
             self._fh = open(filename, "r")
         except Exception as e:
@@ -176,38 +187,47 @@ class DsnStationAllocationFileDecoder(Decoder):
 
         return result.groupdict()
 
+    def read_header(self) -> dict:
+
+        if self.header_hash is not None:
+            return self.header_hash
+
+        header = self.parse_header([next(self._fh) for _ in range(11)])
+        self.header_hash = header
+
+        return header
+
     def parse(self):
 
         logger = logging.getLogger(__name__)
         logger.info("Parsing DSN Station Allocation File: %s", self._fh.name)
 
-        self.header_hash = self.parse_header([next(self._fh) for _ in range(11)])
+        self.read_header()
 
         num_r = 0
 
         for line in self._fh:
             r = self.parse_line(line)
 
-
             # We need to do a check here, End of Track and End of Activity can roll over to the end of the day
 
             if r["SOA"] > r["EOT"]:
-                r["EOT"] = datetime.datetime.strptime(r["YYDOY"] + r["EOT"], self.EVENT_TIME_FORMAT) + datetime.timedelta(days=1)
+                r["EOT"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOT"], self.EVENT_TIME_FORMAT) + datetime.timedelta(days=1)
             else:
-                r["EOT"] = datetime.datetime.strptime(r["YYDOY"] + r["EOT"], self.EVENT_TIME_FORMAT)
+                r["EOT"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOT"], self.EVENT_TIME_FORMAT)
 
             if r["SOA"] > r["EOA"]:
-                r["EOA"] = datetime.datetime.strptime(r["YYDOY"] + r["EOA"], self.EVENT_TIME_FORMAT) + datetime.timedelta(days=1)
+                r["EOA"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOA"], self.EVENT_TIME_FORMAT) + datetime.timedelta(days=1)
             else:
-                r["EOA"] = datetime.datetime.strptime(r["YYDOY"] + r["EOA"], self.EVENT_TIME_FORMAT)
+                r["EOA"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOA"], self.EVENT_TIME_FORMAT)
 
-            r["SOA"] = datetime.datetime.strptime(r["YYDOY"]+r["SOA"], self.EVENT_TIME_FORMAT)
-            r["BOT"] = datetime.datetime.strptime(r["YYDOY"]+r["BOT"], self.EVENT_TIME_FORMAT)
+            r["SOA"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["SOA"], self.EVENT_TIME_FORMAT)
+            r["BOT"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["BOT"], self.EVENT_TIME_FORMAT)
 
-            r["Project_id"] = r["Project_id"].strip()
-            r["Description"] = r["Description"].strip()
-            r["Pass"] = int(r["Pass"])
-            r["Config_code"] = r["Config_code"].strip()
+            r["PROJECT_ID"] = r["PROJECT_ID"].strip()
+            r["DESCRIPTION"] = r["DESCRIPTION"].strip()
+            r["PASS"] = int(r["PASS"])
+            r["CONFIG_CODE"] = r["CONFIG_CODE"].strip()
 
             logger.debug("Parsed DSN Viewperiod event: %s", r)
             num_r += 1
@@ -227,8 +247,174 @@ class DsnStationAllocationFileDecoder(Decoder):
 class Encoder(ABC):
 
     @abstractmethod
-    def cast(self, obj):
+    def cast(cls, filename: str, header_hash: dict, event_hashs: Iterable[dict]) -> None:
         pass
+
+
+class DsnViewPeriodPredLegacyEncoder(Encoder):
+
+    def __init__(self):
+        pass
+
+
+class DsnStationAllocationFileEncoder(Encoder):
+
+    HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
+    HEADER_KEYS = [("MISSION_NAME", str),
+                   ("SPACECRAFT_NAME", str),
+                   ("DSN_SPACECRAFT_NUM", int),
+                   ("DATA_SET_ID", str),
+                   ("FILE_NAME", str),
+                   ("PRODUCT_VERSION_ID", float),
+                   ("APPLICABLE_START_TIME", datetime.datetime),
+                   ("APPLICABLE_STOP_TIME", datetime.datetime),
+                   ("PRODUCT_CREATION_TIME", datetime.datetime)]
+
+    YY_FORMAT = "%y"
+    DOY_FORMAT = "%j"
+    HHMM_FORMAT = "%H%M"
+    EVENT_KEYS = [("CHANGE_INDICATOR", str, 1),
+                  ("YY", str, 2),
+                  ("DOY", str, 3),
+                  ("SOA", datetime.datetime, 4),
+                  ("BOT", datetime.datetime, 4),
+                  ("EOT", datetime.datetime, 4),
+                  ("EOA", datetime.datetime, 4),
+                  ("ANTENNA_ID", str, 6),
+                  ("PROJECT_ID", str, 5),
+                  ("DESCRIPTION", str, 16),
+                  ("PASS", int, 4),
+                  ("CONFIG_CODE", str, 6),
+                  ("SOE_FLAG", str, 1),
+                  ("WORK_CODE_CAT", str, 3),
+                  ("RELATE", str, 1)]
+
+    @classmethod
+    def check_header(cls, header_hash: dict) -> bool:
+
+        assert(isinstance(header_hash, dict))
+        logger = logging.getLogger(__name__)
+
+        for key, data_type in cls.HEADER_KEYS:
+            if key not in header_hash:
+                logger.error("Missing header value for '%s' in Station Allocation encoding", key)
+                return False
+
+            if not isinstance(header_hash[key], data_type):
+                logger.error("Expected datatype '%s' for header value '%s' in Station Allocation encoding, got '%s'", data_type, key, type(header_hash[key]))
+                return False
+
+        return True
+
+    @classmethod
+    def cast_header(cls, header_hash: dict) -> str:
+
+      assert(isinstance(header_hash, dict))
+
+      if not cls.check_header(header_hash):
+          raise ValueError("Malformed header_hash")
+
+      r = ""
+
+      # TODO Write top string here
+      r += "CCSD3ZF0000100000001NJPL3KS0L015$$MARK$$\n"
+
+      for key, data_type in cls.HEADER_KEYS:
+
+          if key in ("APPLICABLE_START_TIME", "APPLICABLE_STOP_TIME", "PRODUCT_CREATION_TIME"):
+              r += "%s = %s;\n" % (key, header_hash[key].strftime(cls.HEADER_TIME_FORMAT))
+          else:
+              r += "%s = %s;\n" % (key, data_type(header_hash[key]))
+
+      # TODO Write bottom string here
+      r += "CCSD3RE00000$$MARK$$NJPL3IF0M00200000001\n"
+
+      return r
+
+    @classmethod
+    def check_event(cls, event_hash: dict) -> bool:
+
+        assert(isinstance(event_hash, dict))
+        logger = logging.getLogger(__name__)
+
+        for key, data_type, max_length in cls.EVENT_KEYS:
+            if key not in event_hash:
+                logger.error("Missing event value for '%s' in Station Allocation encoding", key)
+                return False
+
+            if not isinstance(event_hash[key], data_type):
+                logger.error("Expected datatype '%s' for event value '%s' in Station Allocation encoding, got '%s'", data_type, key, type(event_hash[key]))
+                return False
+
+            if data_type == str and len(event_hash[key]) > max_length:
+                logger.error("Event value field '%s' -> '%s' is too long", key, event_hash[key])
+                return False
+            elif data_type == int and event_hash[key] > 10 ** (max_length - 1):
+                val = 10 ** (max_length - 1)
+                logger.error("Event value field '%s' -> '%s' is too long", key, event_hash[key])
+                return False
+
+        return True
+
+    @classmethod
+    def cast_event(cls, event_hash: dict) -> str:
+
+        assert(isinstance(event_hash, dict))
+
+        if not cls.check_event(event_hash):
+            raise ValueError("Malformed event_hash")
+
+        translated_event = event_hash
+
+        translated_event["SOA"] = translated_event["SOA"].strftime(cls.HHMM_FORMAT)
+        translated_event["BOT"] = translated_event["BOT"].strftime(cls.HHMM_FORMAT)
+        translated_event["EOT"] = translated_event["EOT"].strftime(cls.HHMM_FORMAT)
+        translated_event["EOA"] = translated_event["EOA"].strftime(cls.HHMM_FORMAT)
+        translated_event["PASS"] = str(translated_event["PASS"]).zfill(4)
+
+        r = ""
+        looper = iter(cls.EVENT_KEYS)
+
+        # Change indicator
+        key, data_type, length = next(looper)
+        r += translated_event[key].ljust(length)
+
+        for key, data_type, length in looper:
+            r += translated_event[key].ljust(length)
+
+            # No space after CONFIG_CODE
+            if key == "CONFIG_CODE":
+                next
+            r += " "
+
+        r += "  \n"
+        return r
+
+    @classmethod
+    def cast(cls, filename: str, header_hash: dict, event_hashs: Iterable[dict]) -> None:
+
+        assert(isinstance(filename, str))
+
+        logger = logging.getLogger(__name__)
+
+        logger.info("Opening DSN Station Allocation file for Encoding: %s", filename)
+        try:
+            fh = open(filename, "w")
+        except Exception as e:
+            logger.exception(e)
+            raise
+
+        num_r = 0
+        # Write contents of file
+        fh.write(cls.cast_header(header_hash))
+        for event_hash in event_hashs:
+            fh.write(cls.cast_event(event_hash))
+            num_r += 1
+
+        logger.info("Encoded %s activities to %s", num_r, filename)
+
+        logger.debug("Closing file: %s", filename)
+        fh.close()
 
 
 class GqlInterface(object):
@@ -352,12 +538,12 @@ class GqlInterface(object):
         spacecraft_name = header_segs["SPACECRAFT_NAME"]
         naif_spacecraft_id = -header_segs["DSN_SPACECRAFT_NUM"]
         dsn_spacecraft_id = header_segs["DSN_SPACECRAFT_NUM"]
-        pass_type = event_segs["Description"]
+        pass_type = event_segs["DESCRIPTION"]
         soa = event_segs["SOA"].isoformat()
         bot = event_segs["BOT"].isoformat()
         eot = event_segs["EOT"].isoformat()
         eoa = event_segs["EOA"].isoformat()
-        antenna_id = event_segs["Antenna_id"]
+        antenna_id = event_segs["ANTENNA_ID"]
         duration_of_activity = cls.convert_to_aerie_duration(event_segs["SOA"], event_segs["EOA"])
         start_of_track = event_segs["BOT"].isoformat()
         duration_of_track = cls.convert_to_aerie_duration(event_segs["BOT"], event_segs["EOT"])
@@ -390,7 +576,12 @@ if __name__ == "__main__":
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
 
-    GqlInterface(0, datetime.datetime.now()).mux_files([
-        DsnViewPeriodPredLegacyDecoder("../../M20_20223_20284_TEST.VP"),
-        DsnStationAllocationFileDecoder("../../M20_20230_20272_TEST.SAF")
-    ])
+    vp_file = DsnViewPeriodPredLegacyDecoder("../../M20_20223_20284_TEST.VP")
+    saf_file = DsnStationAllocationFileDecoder("../../M20_20230_20272_TEST.SAF")
+
+    saf_header = saf_file.read_header()
+    saf_iter = saf_file.parse()
+
+    DsnStationAllocationFileEncoder.cast("./outtest", saf_header, saf_iter)
+
+    #GqlInterface(0, datetime.datetime.now()).mux_files([vp_file, saf_file])
