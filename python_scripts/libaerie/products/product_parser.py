@@ -2,7 +2,7 @@ import re
 import datetime
 import os
 import logging
-import requests
+#import requests
 import json
 
 from collections.abc import Iterable
@@ -21,7 +21,7 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
     HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
     EVENT_TIME_FORMAT = "%y %j/%H:%M:%S"
 
-    EVENT_RECORD_REGEX = "(?P<Time>.{15}).(?P<Event>.{16}).(?P<Spacecraft_identifier>.{3}).(?P<Station_identifier>.{2}).(?P<Pass>.{4}).(?P<Azimuth>.{5}).(?P<Elevation>.{5}).(?P<AZ_LHA_X>.{5}).(?P<EL_DEC_Y>.{5}).(?P<RTLT>.{10})"
+    EVENT_RECORD_REGEX = "(?P<TIME>.{15}).(?P<EVENT>.{16}).(?P<SPACECRAFT_IDENTIFIER>.{3}).(?P<STATION_IDENTIFIER>.{2}).(?P<PASS>.{4}).(?P<AZIMUTH>.{5}).(?P<ELEVATION>.{5}).(?P<AZ_LHA_X>.{5}).(?P<EL_DEC_Y>.{5}).(?P<RTLT>.{10})"
 
     def __init__(self, filename: str):
         logger = logging.getLogger(__name__)
@@ -100,13 +100,13 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
         for line in self._fh:
             r = self.parse_line(line)
 
-            r["Time"] = datetime.datetime.strptime(r["Time"], self.EVENT_TIME_FORMAT)
-            r["Event"] = r["Event"].strip()
-            r["Spacecraft_identifier"] = int(r["Spacecraft_identifier"])
-            r["Station_identifier"] = int(r["Station_identifier"])
-            r["Pass"] = int(r["Pass"])
-            r["Azimuth"] = float(r["Azimuth"])
-            r["Elevation"] = float(r["Elevation"])
+            r["TIME"] = datetime.datetime.strptime(r["TIME"], self.EVENT_TIME_FORMAT)
+            r["EVENT"] = r["EVENT"].strip()
+            r["SPACECRAFT_IDENTIFIER"] = int(r["SPACECRAFT_IDENTIFIER"])
+            r["STATION_IDENTIFIER"] = int(r["STATION_IDENTIFIER"])
+            r["PASS"] = int(r["PASS"])
+            r["AZIMUTH"] = float(r["AZIMUTH"])
+            r["ELEVATION"] = float(r["ELEVATION"])
             r["AZ_LHA_X"] = float(r["AZ_LHA_X"])
             r["EL_DEC_Y"] = float(r["EL_DEC_Y"])
             r["RTLT"] = self.rtlt_to_timedelta(r["RTLT"])
@@ -244,18 +244,203 @@ class DsnStationAllocationFileDecoder(Decoder):
         return datetime.timedelta(hours=hh, minutes=mm, seconds=ssz)
 
 
-class Encoder(ABC):
+class Encoder(object):
 
-    @abstractmethod
-    def cast(cls, filename: str, header_hash: dict, event_hashs: Iterable[dict]) -> None:
-        pass
+  HEADER_TIME_FORMAT = ""
+  HEADER_KEYS = []
+  EVENT_KEYS = []
+  SFDU_HEADER = ()
+
+  @classmethod
+  def check_header(cls, header_hash: dict) -> bool:
+
+    assert(isinstance(header_hash, dict))
+    logger = logging.getLogger(__name__)
+
+    for key, data_type in cls.HEADER_KEYS:
+      if key not in header_hash:
+        logger.error("Missing header value for '%s' in encoding", key)
+        return False
+
+      if not isinstance(header_hash[key], data_type):
+        logger.error("Expected datatype '%s' for header value '%s', got '%s'", data_type, key, type(header_hash[key]))
+        return False
+
+    return True
+
+  @classmethod
+  def cast_header(cls, header_hash: dict) -> str:
+
+    assert(isinstance(header_hash, dict))
+
+    if not cls.check_header(header_hash):
+      raise ValueError("Malformed header_hash")
+
+    r = ""
+
+    r += "%s\n" % (cls.SFDU_HEADER[0],)
+
+    for key, data_type in cls.HEADER_KEYS:
+
+      if key in ("APPLICABLE_START_TIME", "APPLICABLE_STOP_TIME", "PRODUCT_CREATION_TIME"):
+        r += "%s = %s;\n" % (key, header_hash[key].strftime(cls.HEADER_TIME_FORMAT))
+      else:
+        r += "%s = %s;\n" % (key, data_type(header_hash[key]))
+
+    r += "%s\n" % (cls.SFDU_HEADER[1],)
+
+    return r
+
+  @classmethod
+  def check_event(cls, event_hash: dict) -> bool:
+
+    assert(isinstance(event_hash, dict))
+    logger = logging.getLogger(__name__)
+
+    for key, data_type, max_length in cls.EVENT_KEYS:
+      if key not in event_hash:
+        logger.error("Missing event value for '%s' in Station Allocation encoding", key)
+        return False
+
+      if not isinstance(event_hash[key], data_type):
+        logger.error("Expected datatype '%s' for event value '%s' in Station Allocation encoding, got '%s'", data_type, key, type(event_hash[key]))
+        return False
+
+      if data_type == str and len(event_hash[key]) > max_length:
+        logger.error("Event value field '%s' -> '%s' is too long", key, event_hash[key])
+        return False
+      elif data_type == int and event_hash[key] >= 10 ** max_length:
+        val = 10 ** (max_length)
+        logger.error("Event value field '%s' -> '%s' is too long", key, event_hash[key])
+        return False
+
+    return True
+
+  @classmethod
+  def cast_event(cls, event_hash: dict) -> str:
+
+    assert(isinstance(event_hash, dict))
+
+    if not cls.check_event(event_hash):
+      raise ValueError("Malformed event_hash")
+
+  @classmethod
+  def cast(cls, filename: str, header_hash: dict, event_hashs: Iterable[dict]) -> None:
+
+    assert(isinstance(filename, str))
+    logger = logging.getLogger(__name__)
+
+    logger.info("Opening file for Encoding: %s", filename)
+    try:
+      fh = open(filename, "w")
+    except Exception as e:
+      logger.exception(e)
+      raise
+
+    num_r = 0
+    # Write contents of file
+    fh.write(cls.cast_header(header_hash))
+    for event_hash in event_hashs:
+      fh.write(cls.cast_event(event_hash))
+      num_r += 1
+
+    logger.info("Encoded %s activities to %s", num_r, filename)
+
+    logger.debug("Closing file: %s", filename)
+    fh.close()
 
 
 class DsnViewPeriodPredLegacyEncoder(Encoder):
 
-    def __init__(self):
-        pass
+  HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
+  HEADER_KEYS = [("MISSION_NAME", str),
+                 ("SPACECRAFT_NAME", str),
+                 ("DSN_SPACECRAFT_NUM", int),
+                 ("DATA_SET_ID", str),
+                 ("FILE_NAME", str),
+                 ("USER_PRODUCT_ID", float),
+                 ("APPLICABLE_START_TIME", datetime.datetime),
+                 ("APPLICABLE_STOP_TIME", datetime.datetime),
+                 ("PRODUCT_CREATION_TIME", datetime.datetime)]
+  SFDU_HEADER = ("CCSD3ZF0000100000001NJPL3KS0L015$$MARK$$",
+                 "CCSD3RE00000$$MARK$$NJPL3IF0M00400000001")
 
+  EVENT_TIME_FORMAT = "%y %j/%H:%M:%S"
+  EVENT_KEYS = [("TIME", datetime.datetime, 15),
+                ("EVENT", str, 16),
+                ("SPACECRAFT_IDENTIFIER", int, 3),
+                ("STATION_IDENTIFIER", int, 2),
+                ("PASS", int, 4),
+                ("AZIMUTH", float, 5),
+                ("ELEVATION", float, 5),
+                ("AZ_LHA_X", float, 5),
+                ("EL_DEC_Y", float, 5),
+                ("RTLT", datetime.timedelta, 10)]
+
+  @classmethod
+  def check_event(cls, event_hash: dict) -> bool:
+
+    if super(DsnViewPeriodPredLegacyEncoder, cls).check_event(event_hash) is False:
+      return False
+
+    logger = logging.getLogger(__name__)
+
+    if not (0 <= event_hash["SPACECRAFT_IDENTIFIER"] < 1000):
+      logger.error("Event value field 'SPACECRAFT_IDENTIFIER' -> %s is not within proper range of 0 to 999", event_hash["SPACECRAFT_IDENTIFIER"])
+      return False
+    elif not (0 <= event_hash["AZIMUTH"] < 360):
+      logger.error("Event value field 'AZIMUTH' -> %s is not within proper range of 0 to 360", event_hash["AZIMUTH"])
+      return False
+    elif not (-90 <= event_hash["ELEVATION"] <= 90):
+      logger.error("Event value field 'ELEVATION' -> %s is not within proper range of -90 to 90", event_hash["ELEVATION"])
+      return False
+    elif not (0 <= event_hash["AZ_LHA_X"] < 360):
+      logger.error("Event value field 'AZ_LHA_X' -> %s is not within proper range of 0 to 360", event_hash["AZ_LHA_X"])
+      return False
+    elif not (0 <= event_hash["EL_DEC_Y"] < 360):
+      logger.error("Event value field 'EL_DEC_Y' -> %s is not within proper range of 0 to 360", event_hash["EL_DEC_Y"])
+      return False
+
+    return True
+
+  @classmethod
+  def cast_event(cls, event_hash: dict) -> str:
+
+    super(DsnViewPeriodPredLegacyEncoder, cls).cast_event(event_hash)
+
+    translated_event = event_hash
+
+    translated_event["TIME"] = translated_event["TIME"].strftime(cls.EVENT_TIME_FORMAT)
+    translated_event["SPACECRAFT_IDENTIFIER"] = str(translated_event["SPACECRAFT_IDENTIFIER"]).zfill(3)
+    translated_event["STATION_IDENTIFIER"] = str(translated_event["STATION_IDENTIFIER"]).zfill(2)
+    translated_event["PASS"] = str(translated_event["PASS"]).zfill(4)
+    translated_event["AZIMUTH"] = str(round(translated_event["AZIMUTH"], 1))
+    translated_event["ELEVATION"] = str(round(translated_event["ELEVATION"], 1))
+    translated_event["AZ_LHA_X"] = str(round(translated_event["AZ_LHA_X"], 1))
+    translated_event["EL_DEC_Y"] = str(round(translated_event["EL_DEC_Y"], 1))
+
+    hours, remainder = divmod(translated_event["RTLT"].total_seconds(), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    translated_event["RTLT"] = '{:02}:{:02}:{:04}'.format(int(hours), int(minutes), round(seconds, 1))
+
+    r = ""
+    looper = iter(cls.EVENT_KEYS)
+
+    for key, data_type, length in looper:
+
+      if key in ("AZIMUTH", "ELEVATION", "AZ_LHA_X", "EL_DEC_Y"):
+        r += translated_event[key].rjust(length)
+      else:
+        r += translated_event[key].ljust(length)
+
+      # No space after RTLT
+      if key == "RTLT":
+        continue
+
+      r += " "
+
+    r += "\n"
+    return r
 
 class DsnStationAllocationFileEncoder(Encoder):
 
@@ -269,6 +454,8 @@ class DsnStationAllocationFileEncoder(Encoder):
                    ("APPLICABLE_START_TIME", datetime.datetime),
                    ("APPLICABLE_STOP_TIME", datetime.datetime),
                    ("PRODUCT_CREATION_TIME", datetime.datetime)]
+    SFDU_HEADER = ("CCSD3ZF0000100000001NJPL3KS0L015$$MARK$$",
+                   "CCSD3RE00000$$MARK$$NJPL3IF0M00200000001")
 
     YY_FORMAT = "%y"
     DOY_FORMAT = "%j"
@@ -290,79 +477,9 @@ class DsnStationAllocationFileEncoder(Encoder):
                   ("RELATE", str, 1)]
 
     @classmethod
-    def check_header(cls, header_hash: dict) -> bool:
-
-        assert(isinstance(header_hash, dict))
-        logger = logging.getLogger(__name__)
-
-        for key, data_type in cls.HEADER_KEYS:
-            if key not in header_hash:
-                logger.error("Missing header value for '%s' in Station Allocation encoding", key)
-                return False
-
-            if not isinstance(header_hash[key], data_type):
-                logger.error("Expected datatype '%s' for header value '%s' in Station Allocation encoding, got '%s'", data_type, key, type(header_hash[key]))
-                return False
-
-        return True
-
-    @classmethod
-    def cast_header(cls, header_hash: dict) -> str:
-
-      assert(isinstance(header_hash, dict))
-
-      if not cls.check_header(header_hash):
-          raise ValueError("Malformed header_hash")
-
-      r = ""
-
-      # TODO Write top string here
-      r += "CCSD3ZF0000100000001NJPL3KS0L015$$MARK$$\n"
-
-      for key, data_type in cls.HEADER_KEYS:
-
-          if key in ("APPLICABLE_START_TIME", "APPLICABLE_STOP_TIME", "PRODUCT_CREATION_TIME"):
-              r += "%s = %s;\n" % (key, header_hash[key].strftime(cls.HEADER_TIME_FORMAT))
-          else:
-              r += "%s = %s;\n" % (key, data_type(header_hash[key]))
-
-      # TODO Write bottom string here
-      r += "CCSD3RE00000$$MARK$$NJPL3IF0M00200000001\n"
-
-      return r
-
-    @classmethod
-    def check_event(cls, event_hash: dict) -> bool:
-
-        assert(isinstance(event_hash, dict))
-        logger = logging.getLogger(__name__)
-
-        for key, data_type, max_length in cls.EVENT_KEYS:
-            if key not in event_hash:
-                logger.error("Missing event value for '%s' in Station Allocation encoding", key)
-                return False
-
-            if not isinstance(event_hash[key], data_type):
-                logger.error("Expected datatype '%s' for event value '%s' in Station Allocation encoding, got '%s'", data_type, key, type(event_hash[key]))
-                return False
-
-            if data_type == str and len(event_hash[key]) > max_length:
-                logger.error("Event value field '%s' -> '%s' is too long", key, event_hash[key])
-                return False
-            elif data_type == int and event_hash[key] > 10 ** (max_length - 1):
-                val = 10 ** (max_length - 1)
-                logger.error("Event value field '%s' -> '%s' is too long", key, event_hash[key])
-                return False
-
-        return True
-
-    @classmethod
     def cast_event(cls, event_hash: dict) -> str:
 
-        assert(isinstance(event_hash, dict))
-
-        if not cls.check_event(event_hash):
-            raise ValueError("Malformed event_hash")
+        super(DsnStationAllocationFileEncoder, cls).cast_event(event_hash)
 
         translated_event = event_hash
 
@@ -384,37 +501,12 @@ class DsnStationAllocationFileEncoder(Encoder):
 
             # No space after CONFIG_CODE
             if key == "CONFIG_CODE":
-                next
+                continue
             r += " "
 
-        r += "  \n"
+        r += "   \n"
         return r
 
-    @classmethod
-    def cast(cls, filename: str, header_hash: dict, event_hashs: Iterable[dict]) -> None:
-
-        assert(isinstance(filename, str))
-
-        logger = logging.getLogger(__name__)
-
-        logger.info("Opening DSN Station Allocation file for Encoding: %s", filename)
-        try:
-            fh = open(filename, "w")
-        except Exception as e:
-            logger.exception(e)
-            raise
-
-        num_r = 0
-        # Write contents of file
-        fh.write(cls.cast_header(header_hash))
-        for event_hash in event_hashs:
-            fh.write(cls.cast_event(event_hash))
-            num_r += 1
-
-        logger.info("Encoded %s activities to %s", num_r, filename)
-
-        logger.debug("Closing file: %s", filename)
-        fh.close()
 
 
 class GqlInterface(object):
@@ -492,17 +584,17 @@ class GqlInterface(object):
     def convert_dsn_viewperiod_to_gql(cls, plan_id: int, plan_start_time: datetime.datetime, header_segs: dict, event_segs: dict) -> dict:
 
         # Get event fields
-        start_offset = cls.convert_to_aerie_offset(plan_start_time, event_segs["Time"])
+        start_offset = cls.convert_to_aerie_offset(plan_start_time, event_segs["TIME"])
         mission_name = header_segs["MISSION_NAME"]
         spacecraft_name = header_segs["SPACECRAFT_NAME"]
         naif_spacecraft_id = -header_segs["DSN_SPACECRAFT_NUM"]
         dsn_spacecraft_id = header_segs["DSN_SPACECRAFT_NUM"]
-        station_receive_time_utc = event_segs["Time"].isoformat()
-        viewperiod_event = event_segs["Event"]
-        station_identifier = event_segs["Station_identifier"]
-        pass_number = event_segs["Pass"]
-        azimuth_degrees = event_segs["Azimuth"]
-        elevation_degrees = event_segs["Elevation"]
+        station_receive_time_utc = event_segs["TIME"].isoformat()
+        viewperiod_event = event_segs["EVENT"]
+        station_identifier = event_segs["STATION_IDENTIFIER"]
+        pass_number = event_segs["PASS"]
+        azimuth_degrees = event_segs["AZIMUTH"]
+        elevation_degrees = event_segs["ELEVATION"]
         lha_x_degrees = event_segs["AZ_LHA_X"]
         dec_y_degrees = event_segs["EL_DEC_Y"]
         duration = event_segs["RTLT"].total_seconds() * 1e6
@@ -576,12 +668,15 @@ if __name__ == "__main__":
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
 
-    vp_file = DsnViewPeriodPredLegacyDecoder("../../M20_20223_20284_TEST.VP")
     saf_file = DsnStationAllocationFileDecoder("../../M20_20230_20272_TEST.SAF")
-
     saf_header = saf_file.read_header()
     saf_iter = saf_file.parse()
+    DsnStationAllocationFileEncoder.cast("./outtest.SAF", saf_header, saf_iter)
 
-    DsnStationAllocationFileEncoder.cast("./outtest", saf_header, saf_iter)
+    vp_file = DsnViewPeriodPredLegacyDecoder("../../M20_20223_20284_TEST.VP")
+    vp_header = vp_file.read_header()
+    vp_iter = vp_file.parse()
+    DsnViewPeriodPredLegacyEncoder.cast("./outtest.VP", vp_header, vp_iter)
+
 
     #GqlInterface(0, datetime.datetime.now()).mux_files([vp_file, saf_file])
