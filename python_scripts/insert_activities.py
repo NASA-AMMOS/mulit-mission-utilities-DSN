@@ -1,12 +1,6 @@
 #!env python3
-
-import json
-import requests
 import argparse
-import os
-import datetime
 import logging
-
 from libaerie.products.product_parser import GqlInterface, DsnStationAllocationFileDecoder, DsnViewPeriodPredLegacyDecoder
 
 date_format = '%Y-%j/%H:%M:%S'
@@ -14,13 +8,13 @@ parser = argparse.ArgumentParser()
 
 # Positional argument
 parser.add_argument('plan_id', type=int, help="plan ID to ingest activity directives into")
-parser.add_argument('plan_start_date', help="Start date of plan in 'YYYY-DOY/HH:MM:SS'")
 
 # Optional arguments
 parser.add_argument('-p', '--vp_file', action='append', dest='vp', default=[], help="Filepath to a DSN View Period file")
 parser.add_argument('-s', '--sa_file', action='append', dest='sa', default=[], help="Filepath to a DSN Station Allocation file")
 parser.add_argument('-a', '--connection_string', default=GqlInterface.DEFAULT_CONNECTION_STRING, help="http://<ip_address>:<port> connection string to graphql database")
 parser.add_argument('-b', '--buffer_length', default=None, dest='buffer', type=int, help="Integer length of the buffer used to parse products, use if parsing large files")
+parser.add_argument('-v', '--verbose', default=False, dest='verbose', type=bool, help="Increased debug output")
 
 args = parser.parse_args()
 
@@ -29,16 +23,12 @@ plan_id = int(args.plan_id)
 # Logging to console
 logging.basicConfig()
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.DEBUG)
+root_logger.setLevel(logging.INFO)
+
+if args.verbose is True:
+    root_logger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger(__name__)
-
-# Check inputs
-try:
-    plan_start_formatted = datetime.datetime.strptime(args.plan_start_date, date_format)
-except Exception as e:
-    logger.fatal("Invalid date: expected format '%s', got '%s'", date_format, args.plan_start_date)
-    exit(1)
 
 decoders = []
 
@@ -56,12 +46,12 @@ for file in args.vp:
         exit(1)
 
 # Setup GQL
-gql = GqlInterface(plan_id, plan_start_formatted, connection_string=args.connection_string)
+gql = GqlInterface(connection_string=args.connection_string)
 
 buffer_len = args.buffer
 activities = []
 
-for activity in gql.mux_files(decoders):
+for activity in gql.mux_files(decoders, plan_id):
     activities.append(activity)
 
     # Check if Buffer is filled

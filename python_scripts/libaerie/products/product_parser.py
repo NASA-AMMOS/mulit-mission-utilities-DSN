@@ -2,7 +2,7 @@ import re
 import datetime
 import os
 import logging
-#import requests
+import requests
 import json
 
 from collections.abc import Iterable
@@ -59,9 +59,9 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
 
         header_segs["DSN_SPACECRAFT_NUM"] = int(header_segs["DSN_SPACECRAFT_NUM"])
         header_segs["USER_PRODUCT_ID"] = float(header_segs["USER_PRODUCT_ID"])
-        header_segs["APPLICABLE_START_TIME"] = datetime.datetime.strptime(header_segs["APPLICABLE_START_TIME"], cls.HEADER_TIME_FORMAT)
-        header_segs["APPLICABLE_STOP_TIME"] = datetime.datetime.strptime(header_segs["APPLICABLE_STOP_TIME"], cls.HEADER_TIME_FORMAT)
-        header_segs["PRODUCT_CREATION_TIME"] = datetime.datetime.strptime(header_segs["PRODUCT_CREATION_TIME"], cls.HEADER_TIME_FORMAT)
+        header_segs["APPLICABLE_START_TIME"] = datetime.datetime.strptime(header_segs["APPLICABLE_START_TIME"], cls.HEADER_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
+        header_segs["APPLICABLE_STOP_TIME"] = datetime.datetime.strptime(header_segs["APPLICABLE_STOP_TIME"], cls.HEADER_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
+        header_segs["PRODUCT_CREATION_TIME"] = datetime.datetime.strptime(header_segs["PRODUCT_CREATION_TIME"], cls.HEADER_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
 
         return header_segs
 
@@ -100,7 +100,7 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
         for line in self._fh:
             r = self.parse_line(line)
 
-            r["TIME"] = datetime.datetime.strptime(r["TIME"], self.EVENT_TIME_FORMAT)
+            r["TIME"] = datetime.datetime.strptime(r["TIME"], self.EVENT_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
             r["EVENT"] = r["EVENT"].strip()
             r["SPACECRAFT_IDENTIFIER"] = int(r["SPACECRAFT_IDENTIFIER"])
             r["STATION_IDENTIFIER"] = int(r["STATION_IDENTIFIER"])
@@ -168,9 +168,9 @@ class DsnStationAllocationFileDecoder(Decoder):
 
         header_segs["DSN_SPACECRAFT_NUM"] = int(header_segs["DSN_SPACECRAFT_NUM"])
         header_segs["PRODUCT_VERSION_ID"] = float(header_segs["PRODUCT_VERSION_ID"])
-        header_segs["APPLICABLE_START_TIME"] = datetime.datetime.strptime(header_segs["APPLICABLE_START_TIME"], cls.HEADER_TIME_FORMAT)
-        header_segs["APPLICABLE_STOP_TIME"] = datetime.datetime.strptime(header_segs["APPLICABLE_STOP_TIME"], cls.HEADER_TIME_FORMAT)
-        header_segs["PRODUCT_CREATION_TIME"] = datetime.datetime.strptime(header_segs["PRODUCT_CREATION_TIME"], cls.HEADER_TIME_FORMAT)
+        header_segs["APPLICABLE_START_TIME"] = datetime.datetime.strptime(header_segs["APPLICABLE_START_TIME"], cls.HEADER_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
+        header_segs["APPLICABLE_STOP_TIME"] = datetime.datetime.strptime(header_segs["APPLICABLE_STOP_TIME"], cls.HEADER_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
+        header_segs["PRODUCT_CREATION_TIME"] = datetime.datetime.strptime(header_segs["PRODUCT_CREATION_TIME"], cls.HEADER_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
 
         return header_segs
 
@@ -212,17 +212,17 @@ class DsnStationAllocationFileDecoder(Decoder):
             # We need to do a check here, End of Track and End of Activity can roll over to the end of the day
 
             if r["SOA"] > r["EOT"]:
-                r["EOT"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOT"], self.EVENT_TIME_FORMAT) + datetime.timedelta(days=1)
+                r["EOT"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOT"], self.EVENT_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc) + datetime.timedelta(days=1)
             else:
-                r["EOT"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOT"], self.EVENT_TIME_FORMAT)
+                r["EOT"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOT"], self.EVENT_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
 
             if r["SOA"] > r["EOA"]:
-                r["EOA"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOA"], self.EVENT_TIME_FORMAT) + datetime.timedelta(days=1)
+                r["EOA"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOA"], self.EVENT_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc) + datetime.timedelta(days=1)
             else:
-                r["EOA"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOA"], self.EVENT_TIME_FORMAT)
+                r["EOA"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["EOA"], self.EVENT_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
 
-            r["SOA"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["SOA"], self.EVENT_TIME_FORMAT)
-            r["BOT"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["BOT"], self.EVENT_TIME_FORMAT)
+            r["SOA"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["SOA"], self.EVENT_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
+            r["BOT"] = datetime.datetime.strptime(r["YY"] + " " + r["DOY"] + r["BOT"], self.EVENT_TIME_FORMAT).replace(tzinfo=datetime.timezone.utc)
 
             r["PROJECT_ID"] = r["PROJECT_ID"].strip()
             r["DESCRIPTION"] = r["DESCRIPTION"].strip()
@@ -442,6 +442,7 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
     r += "\n"
     return r
 
+
 class DsnStationAllocationFileEncoder(Encoder):
 
     HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
@@ -508,39 +509,64 @@ class DsnStationAllocationFileEncoder(Encoder):
         return r
 
 
-
 class GqlInterface(object):
 
-    INSERT_ACTIVITY_QUERY = '''mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } } '''
+    INSERT_ACTIVITY_QUERY = 'mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } }'
+    READ_PLAN_QUERY = 'query getPlan($id: Int) {plan(where: {id: {_eq: $id}}) {id name model_id start_time duration} }'
+
     DEFAULT_CONNECTION_STRING = 'http://localhost:8080/v1/graphql'
 
-    def __init__(self, plan_id: int, plan_start: datetime.datetime, connection_string: str=DEFAULT_CONNECTION_STRING):
-
-        assert(isinstance(plan_id, int))
-        assert(isinstance(plan_start, datetime.datetime))
+    def __init__(self, connection_string: str=DEFAULT_CONNECTION_STRING):
 
         logger = logging.getLogger(__name__)
 
-        self.__plan_id = plan_id
-        self.__plan_start = plan_start
         self.__connection_string = connection_string
 
-        logger.info("GraphQL Config: plan_id: %s, api_conn: %s", plan_id, connection_string)
+        logger.info("GraphQL Config: api_conn: %s", connection_string)
 
-    def mux_files(self, decoders: list) -> dict:
+    def get_plan_info_from_id(self, plan_id: int):
+        logger = logging.getLogger(__name__)
+        plans = self.read_plan(plan_id)["data"]["plan"]
+
+        if len(plans) == 0:
+            logger.error("Plan id %s is not found", plan_id)
+            return None
+        elif len(plans) > 1:
+            logger.error("Multiple plans found for plan id %s", plan_id)
+            return None
+
+        plan = plans[0]
+
+        plan_start = datetime.datetime.fromisoformat(plan["start_time"])
+        plan_name = plan["name"]
+
+        H, MM, SSZ = plan["duration"].split(":")
+        plan_end = plan_start + datetime.timedelta(hours=int(H), minutes=int(MM), seconds=float(SSZ))
+
+        logger.info("Found plan \"%s\", starting at %s, ending at %s", plan_name, plan_start.isoformat(), plan_end.isoformat())
+
+        return plan_start, plan_end
+
+    def mux_files(self, decoders: list, plan_id) -> dict:
 
         assert(isinstance(decoders, list))
         logger = logging.getLogger(__name__)
+
+        plan_start, plan_end = self.get_plan_info_from_id(plan_id)
 
         for decoder in decoders:
 
             if isinstance(decoder, DsnViewPeriodPredLegacyDecoder):
                 for record in decoder.parse():
-                    yield self.convert_dsn_viewperiod_to_gql(self.__plan_id, self.__plan_start, decoder.header_hash, record)
+                    if plan_start > record["TIME"] or record["TIME"] > plan_end:
+                        logger.warning("Record %s is out of range for plan id %s, daterange %s to %s", record, plan_id, plan_start.isoformat(), plan_end.isoformat())
+                    yield self.convert_dsn_viewperiod_to_gql(plan_id, plan_start, decoder.header_hash, record)
 
             elif isinstance(decoder, DsnStationAllocationFileDecoder):
                 for record in decoder.parse():
-                    yield self.convert_dsn_stationallocation_to_gql(self.__plan_id, self.__plan_start, decoder.header_hash, record)
+                    if plan_start > record["SOA"] or record["SOA"] > plan_end:
+                        logger.warning("Record %s is out of range for plan id %s, daterange %s to %s", record, plan_id, plan_start.isoformat(), plan_end.isoformat())
+                    yield self.convert_dsn_stationallocation_to_gql(plan_id, plan_start, decoder.header_hash, record)
 
             else:
                 logger.error("Aborting, Got invalid Decoder type: %s", type(decoder).__name__)
@@ -561,7 +587,28 @@ class GqlInterface(object):
             },
             verify=False
         )
-        logger.debug(json.dumps(response.json(), indent=2))
+        logger.debug("create_activities: %s", json.dumps(response.json(), indent=2))
+
+    def read_plan(self, id: int):
+
+      assert isinstance(id, (type(None), int))
+      logger = logging.getLogger(__name__)
+
+      logger.debug("Reading plans for: id %s", id)
+      response = requests.post(
+        url=self.__connection_string,
+        json={
+          'query': self.READ_PLAN_QUERY,
+          'variables': {
+            'id': id
+          },
+        },
+        verify=False
+      )
+
+      r = response.json()
+      logger.debug("read_plan: %s", json.dumps(r, indent=2))
+      return r
 
     @classmethod
     def convert_to_aerie_offset(cls, plan_start_time: datetime.datetime, activity_start_time: datetime.datetime) -> str:
@@ -663,20 +710,22 @@ class GqlInterface(object):
         }
 
 
+
 if __name__ == "__main__":
     logging.basicConfig()
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(logging.DEBUG)
 
-    saf_file = DsnStationAllocationFileDecoder("../../M20_20230_20272_TEST.SAF")
-    saf_header = saf_file.read_header()
-    saf_iter = saf_file.parse()
-    DsnStationAllocationFileEncoder.cast("./outtest.SAF", saf_header, saf_iter)
+    #saf_file = DsnStationAllocationFileDecoder("../../M20_20230_20272_TEST.SAF")
+    #saf_header = saf_file.read_header()
+    #saf_iter = saf_file.parse()
+    #DsnStationAllocationFileEncoder.cast("./outtest.SAF", saf_header, saf_iter)
 
-    vp_file = DsnViewPeriodPredLegacyDecoder("../../M20_20223_20284_TEST.VP")
-    vp_header = vp_file.read_header()
-    vp_iter = vp_file.parse()
-    DsnViewPeriodPredLegacyEncoder.cast("./outtest.VP", vp_header, vp_iter)
+    #vp_file = DsnViewPeriodPredLegacyDecoder("../../M20_20223_20284_TEST.VP")
+    #vp_header = vp_file.read_header()
+    #vp_iter = vp_file.parse()
+    #DsnViewPeriodPredLegacyEncoder.cast("./outtest.VP", vp_header, vp_iter)
 
 
+    GqlInterface(0, datetime.datetime.now()).read_plan(id=9)
     #GqlInterface(0, datetime.datetime.now()).mux_files([vp_file, saf_file])
