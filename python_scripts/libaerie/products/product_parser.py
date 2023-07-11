@@ -251,6 +251,16 @@ class Encoder(object):
   EVENT_KEYS = []
   SFDU_HEADER = ()
 
+  def __init__(self, filename: str, header_hash:dict=None):
+    logger = logging.getLogger(__name__)
+    try:
+      self._fh = open(filename, "w")
+    except Exception as e:
+      logger.exception(e)
+
+    self.header_hash = header_hash
+    self.header_flag = False
+
   @classmethod
   def check_header(cls, header_hash: dict) -> bool:
 
@@ -324,30 +334,24 @@ class Encoder(object):
     if not cls.check_event(event_hash):
       raise ValueError("Malformed event_hash")
 
-  @classmethod
-  def cast(cls, filename: str, header_hash: dict, event_hashs: Iterable[dict]) -> None:
+  def cast(self, event_hashs: Iterable[dict]) -> None:
 
-    assert(isinstance(filename, str))
     logger = logging.getLogger(__name__)
 
-    logger.info("Opening file for Encoding: %s", filename)
-    try:
-      fh = open(filename, "w")
-    except Exception as e:
-      logger.exception(e)
-      raise
-
     num_r = 0
-    # Write contents of file
-    fh.write(cls.cast_header(header_hash))
+    if self.check_header(self.header_hash) and not self.header_flag:
+      # Write contents of file
+      self._fh.write(self.cast_header(self.header_hash))
+      self.header_flag = True
+
     for event_hash in event_hashs:
-      fh.write(cls.cast_event(event_hash))
+      self._fh.write(self.cast_event(event_hash))
       num_r += 1
 
-    logger.info("Encoded %s activities to %s", num_r, filename)
+    logger.info("Encoded %s activities to %s", num_r, self._fh.name)
 
-    logger.debug("Closing file: %s", filename)
-    fh.close()
+    logger.debug("Closing file: %s", self._fh.name)
+    self._fh.close()
 
 
 class DsnViewPeriodPredLegacyEncoder(Encoder):
@@ -377,6 +381,11 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
                 ("EL_DEC_Y", float, 5),
                 ("RTLT", datetime.timedelta, 10)]
 
+  def __init__(self, filename: str, header_hash: dict=None):
+    logger = logging.getLogger(__name__)
+    logger.info("Opening DSN Viewperiod file for Encoding: %s", filename)
+    super(DsnViewPeriodPredLegacyEncoder, self).__init__(filename, header_hash)
+
   @classmethod
   def check_event(cls, event_hash: dict) -> bool:
 
@@ -403,14 +412,13 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
 
     return True
 
-  @classmethod
-  def cast_event(cls, event_hash: dict) -> str:
+  def cast_event(self, event_hash: dict) -> str:
 
-    super(DsnViewPeriodPredLegacyEncoder, cls).cast_event(event_hash)
+    super(DsnViewPeriodPredLegacyEncoder, self).cast_event(event_hash)
 
     translated_event = event_hash
 
-    translated_event["TIME"] = translated_event["TIME"].strftime(cls.EVENT_TIME_FORMAT)
+    translated_event["TIME"] = translated_event["TIME"].strftime(self.EVENT_TIME_FORMAT)
     translated_event["SPACECRAFT_IDENTIFIER"] = str(translated_event["SPACECRAFT_IDENTIFIER"]).zfill(3)
     translated_event["STATION_IDENTIFIER"] = str(translated_event["STATION_IDENTIFIER"]).zfill(2)
     translated_event["PASS"] = str(translated_event["PASS"]).zfill(4)
@@ -424,7 +432,7 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
     translated_event["RTLT"] = '{:02}:{:02}:{:04}'.format(int(hours), int(minutes), round(seconds, 1))
 
     r = ""
-    looper = iter(cls.EVENT_KEYS)
+    looper = iter(self.EVENT_KEYS)
 
     for key, data_type, length in looper:
 
@@ -477,21 +485,25 @@ class DsnStationAllocationFileEncoder(Encoder):
                   ("WORK_CODE_CAT", str, 3),
                   ("RELATE", str, 1)]
 
-    @classmethod
-    def cast_event(cls, event_hash: dict) -> str:
+    def __init__(self, filename: str, header_hash:dict=None):
+      logger = logging.getLogger(__name__)
+      logger.info("Opening DSN Station Allocation file for Encoding: %s", filename)
+      super(DsnStationAllocationFileEncoder, self).__init__(filename, header_hash)
 
-        super(DsnStationAllocationFileEncoder, cls).cast_event(event_hash)
+    def cast_event(self, event_hash: dict) -> str:
+
+        super(DsnStationAllocationFileEncoder, self).cast_event(event_hash)
 
         translated_event = event_hash
 
-        translated_event["SOA"] = translated_event["SOA"].strftime(cls.HHMM_FORMAT)
-        translated_event["BOT"] = translated_event["BOT"].strftime(cls.HHMM_FORMAT)
-        translated_event["EOT"] = translated_event["EOT"].strftime(cls.HHMM_FORMAT)
-        translated_event["EOA"] = translated_event["EOA"].strftime(cls.HHMM_FORMAT)
+        translated_event["SOA"] = translated_event["SOA"].strftime(self.HHMM_FORMAT)
+        translated_event["BOT"] = translated_event["BOT"].strftime(self.HHMM_FORMAT)
+        translated_event["EOT"] = translated_event["EOT"].strftime(self.HHMM_FORMAT)
+        translated_event["EOA"] = translated_event["EOA"].strftime(self.HHMM_FORMAT)
         translated_event["PASS"] = str(translated_event["PASS"]).zfill(4)
 
         r = ""
-        looper = iter(cls.EVENT_KEYS)
+        looper = iter(self.EVENT_KEYS)
 
         # Change indicator
         key, data_type, length = next(looper)
@@ -513,6 +525,7 @@ class GqlInterface(object):
 
     INSERT_ACTIVITY_QUERY = 'mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } }'
     READ_PLAN_QUERY = 'query getPlan($id: Int) {plan(where: {id: {_eq: $id}}) {id name model_id start_time duration} }'
+    READ_ACTIVITY_QUERY = 'query getActivity($type: String, $plan_id: Int) {activity_directive(where: {type: {_like: $type}, plan_id: {_eq: $plan_id}}) {start_offset id tags type name metadata arguments} }'
 
     DEFAULT_CONNECTION_STRING = 'http://localhost:8080/v1/graphql'
 
@@ -524,7 +537,7 @@ class GqlInterface(object):
 
         logger.info("GraphQL Config: api_conn: %s", connection_string)
 
-    def get_plan_info_from_id(self, plan_id: int):
+    def get_plan_info_from_id(self, plan_id: int) -> tuple[datetime.datetime, datetime.datetime]:
         logger = logging.getLogger(__name__)
         plans = self.read_plan(plan_id)["data"]["plan"]
 
@@ -572,7 +585,22 @@ class GqlInterface(object):
                 logger.error("Aborting, Got invalid Decoder type: %s", type(decoder).__name__)
                 raise ValueError("Invalid Decoder type: %s", type(decoder).__name__)
 
-    def create_activities(self, activities: list):
+    def demux_files(self, saf_encoder: DsnStationAllocationFileEncoder, vp_encoder: DsnViewPeriodPredLegacyEncoder, plan_id: int) -> None:
+
+      logger = logging.getLogger(__name__)
+
+      plan_start, plan_end = self.get_plan_info_from_id(plan_id)
+      activities = self.read_activities(plan_id, "DSN_Track")
+
+      c = []
+      for dsn_track_activity in activities["data"]["activity_directive"]:
+        c.append(self.convert_gql_to_dsn_stationallocation(dsn_track_activity))
+      saf_encoder.cast(c)
+
+
+      #activities = self.read_activities(plan_id, "DSN_View_Period")
+
+    def create_activities(self, activities: list) -> None:
 
         assert isinstance(activities, list)
 
@@ -588,6 +616,29 @@ class GqlInterface(object):
             verify=False
         )
         logger.debug("create_activities: %s", json.dumps(response.json(), indent=2))
+
+    def read_activities(self, plan_id: int, activity_type: str=None):
+
+      assert isinstance(plan_id, (type(None), int))
+      assert isinstance(activity_type, (type(None), str))
+
+      logger = logging.getLogger(__name__)
+      logger.debug("Reading activities for: plan_id %s, activity_type %s", plan_id, activity_type)
+
+      response = requests.post(
+        url=self.__connection_string,
+        json={
+          'query': self.READ_ACTIVITY_QUERY,
+          'variables': {
+            'plan_id': plan_id,
+            'type': activity_type
+          },
+        },
+        verify=False
+      )
+      r = response.json()
+      logger.debug("read_activities: %s", json.dumps(r, indent=2))
+      return r
 
     def read_plan(self, id: int):
 
@@ -683,6 +734,11 @@ class GqlInterface(object):
         eot = event_segs["EOT"].isoformat()
         eoa = event_segs["EOA"].isoformat()
         antenna_id = event_segs["ANTENNA_ID"]
+        project_id = event_segs["PROJECT_ID"]
+        pass_number = int(event_segs["PASS"])
+        config_code = event_segs["CONFIG_CODE"]
+        soe_flag = event_segs["SOE_FLAG"]
+        work_code_catagory = event_segs["WORK_CODE_CAT"]
         duration_of_activity = cls.convert_to_aerie_duration(event_segs["SOA"], event_segs["EOA"])
         start_of_track = event_segs["BOT"].isoformat()
         duration_of_track = cls.convert_to_aerie_duration(event_segs["BOT"], event_segs["EOT"])
@@ -699,6 +755,11 @@ class GqlInterface(object):
                 'EOT': eot,
                 'EOA': eoa,
                 'antenna_ID': antenna_id,
+                'project_ID': project_id,
+                'pass_number': pass_number,
+                'config_code': config_code,
+                'soe_flag': soe_flag,
+                'work_code_catagory': work_code_catagory,
                 'duration_of_activity': duration_of_activity,
                 'start_of_track': start_of_track,
                 'duration_of_track': duration_of_track
@@ -709,7 +770,45 @@ class GqlInterface(object):
             'type': 'DSN_Track'
         }
 
+    @classmethod
+    def convert_gql_to_dsn_stationallocation(cls, dsn_track_activity: dict) -> dict:
 
+      start_offset = dsn_track_activity["start_offset"]
+      arguments = dsn_track_activity["arguments"]
+
+      soa = datetime.datetime.fromisoformat(arguments["SOA"])
+      change_indicator = ""
+      yy = soa.strftime(DsnStationAllocationFileEncoder.YY_FORMAT)
+      doy = soa.strftime(DsnStationAllocationFileEncoder.DOY_FORMAT)
+      bot = datetime.datetime.fromisoformat(arguments["BOT"])
+      eot = datetime.datetime.fromisoformat(arguments["EOT"])
+      eoa = datetime.datetime.fromisoformat(arguments["EOA"])
+      antenna_id = arguments["antenna_ID"]
+      project_id = arguments["project_ID"]
+      description = arguments["pass_type"]
+      pass_num = arguments["pass_number"]
+      config_code = arguments["config_code"]
+      soe_flag = arguments["soe_flag"]
+      work_code_cat = arguments["work_code_catagory"]
+      relate = ""
+
+      return {
+        "CHANGE_INDICATOR": change_indicator,
+        "YY": yy,
+        "DOY": doy,
+        "SOA": soa,
+        "BOT": bot,
+        "EOT": eot,
+        "EOA": eoa,
+        "ANTENNA_ID": antenna_id,
+        "PROJECT_ID": project_id,
+        "DESCRIPTION": description,
+        "PASS": pass_num,
+        "CONFIG_CODE": config_code,
+        "SOE_FLAG": soe_flag,
+        "WORK_CODE_CAT": work_code_cat,
+        "RELATE": relate
+      }
 
 if __name__ == "__main__":
     logging.basicConfig()
@@ -727,5 +826,7 @@ if __name__ == "__main__":
     #DsnViewPeriodPredLegacyEncoder.cast("./outtest.VP", vp_header, vp_iter)
 
 
-    GqlInterface(0, datetime.datetime.now()).read_plan(id=9)
+
+    #GqlInterface(0, datetime.datetime.now()).read_plan(id=9)
+    #print(GqlInterface().read_activities(23, "DSN_View_Period"))
     #GqlInterface(0, datetime.datetime.now()).mux_files([vp_file, saf_file])

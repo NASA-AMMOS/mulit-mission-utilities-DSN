@@ -24,7 +24,7 @@ public class DSN_Track {
   public Integer dsn_spacecraft_ID = 0;
 
   @Parameter
-  public PassType pass_type = PassType.TKG_PASS;
+  public String pass_type = "";
 
   @Parameter
   public String SOA = "";
@@ -40,6 +40,21 @@ public class DSN_Track {
 
   @Parameter
   public String antenna_ID = "";
+
+  @Parameter
+  public String project_ID = "";
+
+  @Parameter
+  public Integer pass_number = 0;
+
+  @Parameter
+  public String config_code = "";
+
+  @Parameter
+  public String soe_flag = "";
+
+  @Parameter
+  public String work_code_catagory = "";
 
   @Parameter
   public Duration duration_of_activity = Duration.HOUR;
