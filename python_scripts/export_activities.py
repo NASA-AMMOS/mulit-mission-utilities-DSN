@@ -67,9 +67,9 @@ vp_header = {
   "FILE_NAME": os.path.basename(args.vp),
   "DATA_SET_ID": "AERIE_PLAN_EXPORT",
   "USER_PRODUCT_ID": 1.0,
-  "APPLICABLE_START_TIME": plan_start.strftime(DsnViewPeriodPredLegacyEncoder.HEADER_TIME_FORMAT),
-  "APPLICABLE_STOP_TIME": plan_end.strftime(DsnViewPeriodPredLegacyEncoder.HEADER_TIME_FORMAT),
-  "PRODUCT_CREATION_TIME": datetime.datetime.utcnow().strftime(DsnViewPeriodPredLegacyEncoder.HEADER_TIME_FORMAT)
+  "APPLICABLE_START_TIME": plan_start,
+  "APPLICABLE_STOP_TIME": plan_end,
+  "PRODUCT_CREATION_TIME": datetime.datetime.utcnow()
 }
 try:
   vp_encoder = DsnViewPeriodPredLegacyEncoder(args.vp, vp_header)

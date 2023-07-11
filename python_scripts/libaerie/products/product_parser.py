@@ -597,8 +597,12 @@ class GqlInterface(object):
         c.append(self.convert_gql_to_dsn_stationallocation(dsn_track_activity))
       saf_encoder.cast(c)
 
+      activities = self.read_activities(plan_id, "DSN_View_Period")
 
-      #activities = self.read_activities(plan_id, "DSN_View_Period")
+      c = []
+      for dsn_view_activity in activities["data"]["activity_directive"]:
+        c.append(self.convert_gql_to_dsn_viewperiod(plan_start, dsn_view_activity))
+      vp_encoder.cast(c)
 
     def create_activities(self, activities: list) -> None:
 
@@ -809,6 +813,38 @@ class GqlInterface(object):
         "WORK_CODE_CAT": work_code_cat,
         "RELATE": relate
       }
+
+    @classmethod
+    def convert_gql_to_dsn_viewperiod(cls, plan_start_time: datetime.datetime, dsn_view_activity: dict) -> dict:
+
+      start_offset = dsn_view_activity["start_offset"]
+      hours, minutes, seconds = start_offset.split(":")
+      time = plan_start_time + datetime.timedelta(hours=int(hours), minutes=int(minutes), seconds=float(seconds))
+
+      arguments = dsn_view_activity["arguments"]
+      event = arguments["viewperiod_event"]
+      spacecraft_identifier = arguments["dsn_spacecraft_ID"]
+      station_identifier = arguments["station_identifier"]
+      pass_number = arguments["pass_number"]
+      azimuth = arguments["azimuth_degrees"]
+      elevation = arguments["elevation_degrees"]
+      az_lha_x = arguments["lha_X_degrees"]
+      el_dec_y = arguments["dec_Y_degrees"]
+      rtlt = datetime.timedelta(microseconds=arguments["duration"])
+
+      return {
+        "TIME": time,
+        "EVENT": event,
+        "SPACECRAFT_IDENTIFIER": spacecraft_identifier,
+        "STATION_IDENTIFIER": station_identifier,
+        "PASS": pass_number,
+        "AZIMUTH": azimuth,
+        "ELEVATION": elevation,
+        "AZ_LHA_X": az_lha_x,
+        "EL_DEC_Y": el_dec_y,
+        "RTLT": rtlt
+      }
+
 
 if __name__ == "__main__":
     logging.basicConfig()
