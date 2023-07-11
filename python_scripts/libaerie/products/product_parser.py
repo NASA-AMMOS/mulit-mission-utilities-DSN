@@ -595,6 +595,7 @@ class GqlInterface(object):
       c = []
       for dsn_track_activity in activities["data"]["activity_directive"]:
         c.append(self.convert_gql_to_dsn_stationallocation(dsn_track_activity))
+      c = sorted(c, key=lambda event: event['SOA'])
       saf_encoder.cast(c)
 
       activities = self.read_activities(plan_id, "DSN_View_Period")
@@ -602,6 +603,7 @@ class GqlInterface(object):
       c = []
       for dsn_view_activity in activities["data"]["activity_directive"]:
         c.append(self.convert_gql_to_dsn_viewperiod(plan_start, dsn_view_activity))
+      c = sorted(c, key=lambda event: event['TIME'])
       vp_encoder.cast(c)
 
     def create_activities(self, activities: list) -> None:
