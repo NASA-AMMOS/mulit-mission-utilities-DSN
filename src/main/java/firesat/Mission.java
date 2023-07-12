@@ -21,18 +21,22 @@ public final class Mission {
   public final Clock utcClock  = new Clock(Instant.parse("2023-08-18T00:00:00.00Z"));
 
   public final Accumulator seconds = new Accumulator(0, 1000);
-  Geometry geo = new Geometry(utcClock);
+  Geometry geo = new Geometry();
 
   public final Register<Double> elevation = Register.forImmutable(0.0);
  // public final SampledResource<Double> elevation_sampled = new SampledResource<>(() -> this.geo.elevation);
 
-  public final SampledResource<Double> el = new SampledResource<>(() -> geo.updategeo(utcClock), $-> $, 10.0);
+  public final SampledResource<Double> el = new SampledResource<>(() -> geo.updategeo(utcClock), $-> $, 1000.0);
+
+
+  public final Register<Double> favorite_number = Register.forImmutable(0.0);
 
   public Mission(final Registrar registrar, final Configuration config) {
     registrar.real("/utcClock", this.utcClock.ticks);
     registrar.real("/seconds", this.seconds);
     registrar.discrete("/elevation", this.elevation, new DoubleValueMapper());
     registrar.discrete("/el", this.el, new DoubleValueMapper());
+    registrar.discrete("/favorite_number", this.favorite_number, new DoubleValueMapper());
 
     //ModelActions.defer(10, ()-> gncControlMode.set(GncControlMode.REACTION_WHEELS));
 
