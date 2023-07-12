@@ -7,7 +7,7 @@ import gov.nasa.jpl.aerie.merlin.framework.annotations.ActivityType.EffectModel;
 import gov.nasa.jpl.aerie.merlin.framework.annotations.Export.Parameter;
 
 @ActivityType("GncChangeControlMode")
-public final class GncChangeControlMode {
+public class GncChangeControlMode {
   @Parameter
   public GncControlMode gncControlMode = GncControlMode.THRUSTERS;
 
