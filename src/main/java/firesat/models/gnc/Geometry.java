@@ -2,20 +2,11 @@ package firesat.models.gnc;
 
 import gov.nasa.jpl.aerie.contrib.models.Clock;
 import gov.nasa.jpl.aerie.contrib.models.Register;
-import gov.nasa.jpl.aerie.contrib.models.SampledResource;
 import gov.nasa.jpl.aerie.merlin.framework.ModelActions;
-import gov.nasa.jpl.aerie.merlin.framework.Resource;
-import gov.nasa.jpl.aerie.merlin.framework.resources.real.RealResource;
 import gov.nasa.jpl.aerie.merlin.protocol.types.Duration;
-import gov.nasa.jpl.aerie.merlin.protocol.types.RealDynamics;
-import spice.basic.CSPICE;
-import spice.basic.SpiceErrorException;
+import java.io.InputStream;
 
-
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -31,26 +22,34 @@ public class Geometry {
 
   public Geometry(String file_path, Instant plan_start_time) {
     List<List<String>> records = new ArrayList<>();
-    try (BufferedReader br = new BufferedReader(new FileReader(file_path))) {
-      String headLine = br.readLine();
-      String line;
-      while ((line = br.readLine()) != null) {
-        String[] values = line.split("\t");
-        records.add(Arrays.asList());
+    try (InputStream in = Geometry.class.getResourceAsStream(file_path)) {
+      try (BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
+        String headLine = br.readLine();
+        String line;
+        while ((line = br.readLine()) != null) {
+          String[] values = line.split("\t");
+          records.add(Arrays.asList());
 
-        Instant event_time = Instant.parse(values[0]);
-        Double elevation = Double.parseDouble(values[1]);
-        Double azimuth = Double.parseDouble(values[2]);
+          Instant event_time = Instant.parse(values[0]);
+          Double elevation = Double.parseDouble(values[1]);
+          Double azimuth = Double.parseDouble(values[2]);
 
-        Duration event_duration_since_plan_start = Duration.of(ChronoUnit.MICROS.between(plan_start_time, event_time), Duration.MICROSECONDS);
-        ModelActions.defer(event_duration_since_plan_start, () -> settable_elevation.set(elevation));
+          Duration event_duration_since_plan_start = Duration.of(ChronoUnit.MICROS.between(plan_start_time, event_time), Duration.MICROSECONDS);
+          ModelActions.defer(event_duration_since_plan_start, () -> ModelActions.replaying(() ->  settable_elevation.set(elevation)));
 
+        }
+      } catch (FileNotFoundException e) {
+        throw new RuntimeException(e);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
-    } catch (FileNotFoundException e) {
-      throw new RuntimeException(e);
+
+
+
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+
   }
 
 
@@ -71,7 +70,7 @@ public class Geometry {
       //read and set my register state
 
     List<List<String>> records = new ArrayList<>();
-    try (BufferedReader br = new BufferedReader(new FileReader("data.csv"))) {
+    try (BufferedReader br = new BufferedReader(new FileReader("firesat/models/gnc/data.csv"))) {
       String line;
       while ((line = br.readLine()) != null) {
         String[] values = line.split(",");
@@ -80,12 +79,6 @@ public class Geometry {
     } catch (FileNotFoundException e) {
       throw new RuntimeException(e);
     } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-
-    try {
-      CSPICE.furnsh(spice_kernels_location);
-    } catch (SpiceErrorException e) {
       throw new RuntimeException(e);
     }
   }
@@ -113,13 +106,7 @@ public class Geometry {
   }
 
   public Double updategeo(Clock utcClock){
-
-    for ()
-
-
     Double elevation = utcClock.ticks.get();
     return elevation*elevation;
   }
-
-
 }
