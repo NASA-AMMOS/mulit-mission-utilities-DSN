@@ -10,7 +10,6 @@ File name                                           Contents
 ------------------------------                      ---------------------------------
 naif00012.tls                                       Generic LSK
 de440_2020_2040.bsp                                 Solar System Ephemeris # we don't need this anymore, still reading in (2020-2040)
-23F01_V1_PD2_scpse_MP.bsp                           Europa Clipper Ephemeris 2031 JUN 10 22:33:41.164            2035 MAY 16 06:48:03.009
 21F31_MEGA_L241030_A300411_LP21_V4_scpse_MP.bsp     Europa Clipper Ephemeris 2024 OCT 29 21:21:49.256            2034 SEP 03 05:04:02.415
 earthstns_itrf93_050714.bsp                         DSN station Ephemeris 1950 to 2050
 earth_topo_201023.tf                                Earth topocentric FK
