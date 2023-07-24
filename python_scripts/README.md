@@ -41,7 +41,7 @@ options:
                         Increased debug output
 ```
 
-Example runs:
+### Example runs:
 - ```python3 import_activities.py 25 -p INPUT.VP -s INPUT.SAF # Ingesting one file of each type```
 - ```python3 import_activities.py 25 -p INPUT1.VP -p INPUT2.VP # Ingesting multiple files of one type```
 - ```python3 import_activities.py 25 -p ./INPUT1.VP -p ./INPUT2.VP -s ./INPUT1.SAF -s ./INPUT2.SAF -b 500 # Ingesting multiple files of both types inserting 500 activities at a time```
@@ -78,5 +78,5 @@ options:
                         Increased debug output
 ```
 
-Example runs:
+### Example runs:
 - ```python3 export_activities.py 25 -p EXPORT..VP -s EXPORT.SAF # Export files for plan ID 25```
