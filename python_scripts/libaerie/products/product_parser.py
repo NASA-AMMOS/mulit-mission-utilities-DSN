@@ -701,7 +701,7 @@ class GqlInterface(object):
         elevation_degrees = event_segs["ELEVATION"]
         lha_x_degrees = event_segs["AZ_LHA_X"]
         dec_y_degrees = event_segs["EL_DEC_Y"]
-        duration = event_segs["RTLT"].total_seconds() * 1e6
+        rtlt = int(event_segs["RTLT"].total_seconds()) * 1e6
 
         return {
         'arguments': {
@@ -717,7 +717,7 @@ class GqlInterface(object):
                 'elevation_degrees': elevation_degrees,
                 'lha_X_degrees': lha_x_degrees,
                 'dec_Y_degrees': dec_y_degrees,
-                'duration': duration
+                'rtlt': rtlt
             },
             'plan_id': plan_id,
             'name': 'DSN View Period',
@@ -832,7 +832,7 @@ class GqlInterface(object):
       elevation = arguments["elevation_degrees"]
       az_lha_x = arguments["lha_X_degrees"]
       el_dec_y = arguments["dec_Y_degrees"]
-      rtlt = datetime.timedelta(microseconds=arguments["duration"])
+      rtlt = datetime.timedelta(microseconds=arguments["rtlt"])
 
       return {
         "TIME": time,

@@ -23,7 +23,7 @@ parser.add_argument('-S', '--spacecraft_name', dest='spacecraft_name', default="
 parser.add_argument('-d', '--dsn_id', dest='dsn_id', default=0, type=int, help="Integer DSN spacecraft number for VP and SAF header")
 parser.add_argument('-a', '--connection_string', default=GqlInterface.DEFAULT_CONNECTION_STRING, help="http://<ip_address>:<port> connection string to graphql database")
 parser.add_argument('-b', '--buffer_length', default=None, dest='buffer', type=int, help="Integer length of the buffer used to parse products, use if parsing large files")
-parser.add_argument('-v', '--verbose', default=False, dest='verbose', type=bool, help="Increased debug output")
+parser.add_argument('-v', '--verbose', action='store_true', help="Increased debug output")
 
 args = parser.parse_args()
 

@@ -26,7 +26,7 @@ public class DSN_View_Period {
   public String station_receive_time_UTC = "";
 
   @Parameter
-  public Integer viewperiod_event  = 0;
+  public String viewperiod_event  = "";
 
   @Parameter
   public Integer station_identifier  = 0;

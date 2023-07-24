@@ -14,7 +14,7 @@ parser.add_argument('-p', '--vp_file', action='append', dest='vp', default=[], t
 parser.add_argument('-s', '--sa_file', action='append', dest='sa', default=[], type=str, help="Filepath to a DSN Station Allocation file")
 parser.add_argument('-a', '--connection_string', default=GqlInterface.DEFAULT_CONNECTION_STRING, help="http://<ip_address>:<port> connection string to graphql database")
 parser.add_argument('-b', '--buffer_length', default=None, dest='buffer', type=int, help="Integer length of the buffer used to parse products, use if parsing large files")
-parser.add_argument('-v', '--verbose', default=False, dest='verbose', type=bool, help="Increased debug output")
+parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', help="Increased debug output")
 
 args = parser.parse_args()
 
