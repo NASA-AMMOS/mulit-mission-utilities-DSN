@@ -17,6 +17,18 @@ class Decoder(ABC):
 
 
 class DsnViewPeriodPredLegacyDecoder(Decoder):
+    """
+    Manages state for decoding a DSN View Period Legacy report file
+
+    :ivar _fh: Private file handler used for reading data from the report
+    :vartype _fh: file object
+    :ivar header_hash: key / value store of the data contained in the header
+    :vartype header_hash: dict
+    "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+    :vartype HEADER_TIME_FORMAT: str
+    "cvar EVENT_TIME_FORMAT: Format of the datetimes in the events
+    :vartype EVENT_TIME_FORMAT: str
+    """
 
     HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
     EVENT_TIME_FORMAT = "%y %j/%H:%M:%S"
@@ -24,8 +36,15 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
     EVENT_RECORD_REGEX = "(?P<TIME>.{15}).(?P<EVENT>.{16}).(?P<SPACECRAFT_IDENTIFIER>.{3}).(?P<STATION_IDENTIFIER>.{2}).(?P<PASS>.{4}).(?P<AZIMUTH>.{5}).(?P<ELEVATION>.{5}).(?P<AZ_LHA_X>.{5}).(?P<EL_DEC_Y>.{5}).(?P<RTLT>.{10})"
 
     def __init__(self, filename: str):
+        """
+        Initialize a DsnViewPeriodPredLegacyDecoder which reads information from DSN View Period files.
+
+        :param filename: Filepath to View Period file.
+        :type filename: str
+        """
         logger = logging.getLogger(__name__)
 
+        # Check if filepath is valid
         if not os.path.isfile(filename):
             logging.error("DSN Viewperiod file not found: '%s'", filename)
             raise FileNotFoundError("DSN Viewperiod file not found: %s" % filename)
@@ -37,11 +56,20 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
             logger.exception(e)
 
         self.header_hash = None
-
     @classmethod
-    def chop_header_line(cls, line: str):
+    def chop_header_line(cls, line: str) -> tuple:
+        """
+        Converts a line from the View Period header into a key / value format
+
+        :param line: Line from the View Period file header
+        :type line: str
+        :return: key, value tuple of the header field and its value
+        :rtype: tuple
+        """
+
         logger = logging.getLogger(__name__)
 
+        # Left of "=" is the key, right is the value
         seg, value = line.split(" = ")
         value = value[:-1]
 
@@ -51,7 +79,16 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
 
     @classmethod
     def parse_header(cls, header_lines_arr: list):
+        """
+        Converts the full header into a dictionary of keys / values
 
+        :param header_lines_arr: collection of lines from the header
+        :type header_lines_arr: list
+        :return: key, value dict of the header dicts and its value
+        :rtype: dict
+        """
+
+        # Loop through header lines, call chop header line to parse individual lines
         header_segs = {}
         for line in header_lines_arr[1:-1]:
             k, v = cls.chop_header_line(line[:-1])
@@ -67,9 +104,18 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
 
     @classmethod
     def parse_line(cls, line: str):
+        """
+        Converts an event line from the view period file to dictionary like object of key / values
+
+        :param line: line containing event data from the View Period file
+        :type line: str
+        :return: key, value dict containing data from the event line
+        :rtype: dict
+        """
 
         logger = logging.getLogger(__name__)
 
+        # Parse View Period line using Regex
         result = re.search(cls.EVENT_RECORD_REGEX, line)
 
         if not result:
@@ -79,6 +125,12 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
         return result.groupdict()
 
     def read_header(self) -> dict:
+        """
+        Read the View Period header and call parse_header to get the values from it
+
+        :return: key, value dict containing data from the header
+        :rtype: dict
+        """
 
         if self.header_hash is not None:
             return self.header_hash
@@ -89,14 +141,23 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
         return header
 
     def parse(self):
+        """
+        Parse entire DSN View Period file, header will be placed into self.header_hash, uses a pythonic
+        generator design pattern.  This function should be called in some iterative process such as a for loop.
+
+        :return: generator returning key / value dicts of events
+        :rtype: dict
+        """
 
         logger = logging.getLogger(__name__)
         logger.info("Parsing DSN View Period File: %s", self._fh.name)
 
+        # Parse the Viewperiod header
         self.read_header()
 
         num_r = 0
 
+        # Parse Viewperiod events
         for line in self._fh:
             r = self.parse_line(line)
 
@@ -118,7 +179,16 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
 
     @classmethod
     def rtlt_to_timedelta(cls, rtlt_dur_str: str) -> datetime.timedelta:
+        """
+        Converts the formatted duration from the Viewperiod RTLT field into a python timedelta
 
+        :param rtlt_dur_str: str containing the duration of rtlt
+        :type rtlt_dur_str: str
+        :return: timedelta object of the formatted duration
+        :rtype: datetime.timedelta
+        """
+
+        # Split duration string into hour, minutes, seconds components and type convert them
         hh, mm, ssz = rtlt_dur_str.split(":", 3)
         hh, mm, ssz = int(hh), int(mm), float(ssz)
 
@@ -126,6 +196,18 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
 
 
 class DsnStationAllocationFileDecoder(Decoder):
+    """
+    Manages state for decoding a DSN Station Allocation report file
+
+    :ivar _fh: Private file handler used for reading data from the report
+    :vartype _fh: file object
+    :ivar header_hash: key / value store of the data contained in the header
+    :vartype header_hash: dict
+    "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+    :vartype HEADER_TIME_FORMAT: str
+    "cvar EVENT_TIME_FORMAT: Format of the datetimes in the events
+    :vartype EVENT_TIME_FORMAT: str
+    """
 
     HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
     EVENT_TIME_FORMAT = "%y %j%H%M"
@@ -133,6 +215,13 @@ class DsnStationAllocationFileDecoder(Decoder):
     EVENT_RECORD_REGEX = "(?P<CHANGE_INDICATOR>.)(?P<YY>.{2}).(?P<DOY>.{3}).(?P<SOA>.{4}).(?P<BOT>.{4}).(?P<EOT>.{4}).(?P<EOA>.{4}).(?P<ANTENNA_ID>.{6}).(?P<PROJECT_ID>.{5}).(?P<DESCRIPTION>.{16}).(?P<PASS>.{4}).(?P<CONFIG_CODE>.{6})(?P<SOE_FLAG>.).(?P<WORK_CODE_CAT>.{3}).(?P<RELATE>.)."
 
     def __init__(self, filename: str):
+        """
+        Initialize a DsnStationAllocationFileDecoder which reads information from DSN Station Allocation files.
+
+        :param filename: Filepath to Station Allocation file.
+        :type filename: str
+        """
+
         logger = logging.getLogger(__name__)
 
         if not os.path.isfile(filename):
@@ -149,6 +238,14 @@ class DsnStationAllocationFileDecoder(Decoder):
 
     @classmethod
     def chop_header_line(cls, line: str):
+        """
+        Converts a line from the Station Allocation header into a key / value format
+
+        :param line: Line from the file header
+        :type line: str
+        :return: key, value tuple of the header field and its value
+        :rtype: tuple
+        """
         logger = logging.getLogger(__name__)
 
         seg, value = line.split(" = ")
@@ -160,6 +257,14 @@ class DsnStationAllocationFileDecoder(Decoder):
 
     @classmethod
     def parse_header(cls, header_lines_arr: list):
+        """
+        Converts the full header into a dictionary of keys / values
+
+        :param header_lines_arr: collection of lines from the header
+        :type header_lines_arr: list
+        :return: key, value dict of the header dicts and its value
+        :rtype: dict
+        """
 
         header_segs = {}
         for line in header_lines_arr[1:-1]:
@@ -176,6 +281,14 @@ class DsnStationAllocationFileDecoder(Decoder):
 
     @classmethod
     def parse_line(cls, line: str):
+        """
+        Converts an event line from the view period file to dictionary like object of key / values
+
+        :param line: line containing event data from the View Period file
+        :type line: str
+        :return: key, value dict containing data from the event line
+        :rtype: dict
+        """
 
         logger = logging.getLogger(__name__)
 
@@ -188,6 +301,12 @@ class DsnStationAllocationFileDecoder(Decoder):
         return result.groupdict()
 
     def read_header(self) -> dict:
+        """
+        Read the View Period header and call parse_header to get the values from it
+
+        :return: key, value dict containing data from the header
+        :rtype: dict
+        """
 
         if self.header_hash is not None:
             return self.header_hash
@@ -198,6 +317,13 @@ class DsnStationAllocationFileDecoder(Decoder):
         return header
 
     def parse(self):
+        """
+        Parse entire DSN Station Allocation file, header will be placed into self.header_hash, uses a pythonic
+        generator design pattern.  This function should be called in some iterative process such as a for loop.
+
+        :return: generator returning key / value dicts of events
+        :rtype: dict
+        """
 
         logger = logging.getLogger(__name__)
         logger.info("Parsing DSN Station Allocation File: %s", self._fh.name)
@@ -237,6 +363,14 @@ class DsnStationAllocationFileDecoder(Decoder):
 
     @classmethod
     def rtlt_to_timedelta(cls, rtlt_dur_str: str) -> datetime.timedelta:
+        """
+        Converts the formatted duration from the Viewperiod RTLT field into a python timedelta
+
+        :param rtlt_dur_str: str containing the duration of rtlt
+        :type rtlt_dur_str: str
+        :return: timedelta object of the formatted duration
+        :rtype: datetime.timedelta
+        """
 
         hh, mm, ssz = rtlt_dur_str.split(":", 3)
         hh, mm, ssz = int(hh), int(mm), float(ssz)
@@ -245,6 +379,22 @@ class DsnStationAllocationFileDecoder(Decoder):
 
 
 class Encoder(object):
+  """
+  Manages state for encoding a report file
+
+  :ivar _fh: Private file handler used for writing data to the report
+  :vartype _fh: file object
+  :ivar header_hash: key / value store of the data that should be written to the header
+  :vartype header_hash: dict
+  "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+  :vartype HEADER_TIME_FORMAT: str
+  "cvar HEADER_KEYS: List of tuples containing key / types for checking proper formatting of self.header_hash
+  :vartype HEADER_KEYS: list
+  "cvar EVENT_KEYS: List of tuples containing key / types for checking proper formatting of event hashes
+  :vartype EVENT_KEYS: list
+  "cvar SFDU_HEADER: Tuple containing the static content of the top and bottom of the header
+  :vartype SFDU_KEYS: tuple
+  """
 
   HEADER_TIME_FORMAT = ""
   HEADER_KEYS = []
@@ -252,6 +402,15 @@ class Encoder(object):
   SFDU_HEADER = ()
 
   def __init__(self, filename: str, header_hash:dict=None):
+    """
+    Initialize a Encoder which is meant to read output from the AERIE database and encode it into a report file.
+
+    :param filename: Filepath to Encoded file.
+    :type filename: str
+    :param header_hash: Dictionary of header values
+    :type header_hash: dict
+    """
+
     logger = logging.getLogger(__name__)
     try:
       self._fh = open(filename, "w")
@@ -264,6 +423,14 @@ class Encoder(object):
   @classmethod
   def check_header(cls, header_hash: dict) -> bool:
 
+    """
+    Checks the validity of the formatting of a user inputted header dictionary
+
+    :param header_hash: Contains field information for the report header
+    :type header_hash: dict
+    :return: True on valid, False on non valid
+    :rtype: bool
+    """
     assert(isinstance(header_hash, dict))
     logger = logging.getLogger(__name__)
 
@@ -280,9 +447,18 @@ class Encoder(object):
 
   @classmethod
   def cast_header(cls, header_hash: dict) -> str:
+    """
+    Construct the file header, return it as a string
+
+    :param header_hash: Contains field information for the report header
+    :type header_hash: dict
+    :return: Constructed header ready to be written to the report
+    :rtype: str
+    """
 
     assert(isinstance(header_hash, dict))
 
+    # Quality check the formatting of the header_hash using cls.HEADER_KEYS
     if not cls.check_header(header_hash):
       raise ValueError("Malformed header_hash")
 
@@ -290,6 +466,7 @@ class Encoder(object):
 
     r += "%s\n" % (cls.SFDU_HEADER[0],)
 
+    # Construct header
     for key, data_type in cls.HEADER_KEYS:
 
       if key in ("APPLICABLE_START_TIME", "APPLICABLE_STOP_TIME", "PRODUCT_CREATION_TIME"):
@@ -303,6 +480,14 @@ class Encoder(object):
 
   @classmethod
   def check_event(cls, event_hash: dict) -> bool:
+    """
+    Checks the validity of the formatting of a user inputted event dictionary
+
+    :param event_hash: Contains field information for the event
+    :type event_hash: dict
+    :return: True on valid, False on non valid
+    :rtype: bool
+    """
 
     assert(isinstance(event_hash, dict))
     logger = logging.getLogger(__name__)
@@ -328,6 +513,14 @@ class Encoder(object):
 
   @classmethod
   def cast_event(cls, event_hash: dict) -> str:
+    """
+    Construct the event line, return it as a string, this function is implemented in subclasses
+
+    :param event_hash: Contains field information for the report event line
+    :type event_hash: dict
+    :return: None
+    :rtype: None
+    """
 
     assert(isinstance(event_hash, dict))
 
@@ -335,6 +528,16 @@ class Encoder(object):
       raise ValueError("Malformed event_hash")
 
   def cast(self, event_hashs: Iterable[dict]) -> None:
+    """
+    Write the report file to the filepath, call class functions to check the validity of information and construct the
+    report.
+
+    :param event_hashs: Iterable object providing event_hashs which contain the information that should be written to
+    the report.
+    :type event_hashs: Iterable[dict]
+    :return: None
+    :rtype: None
+    """
 
     logger = logging.getLogger(__name__)
 
@@ -355,6 +558,24 @@ class Encoder(object):
 
 
 class DsnViewPeriodPredLegacyEncoder(Encoder):
+  """
+  Manages state for encoding a DSN View Period report file
+
+  :ivar _fh: Private file handler used for writing data to the report
+  :vartype _fh: file object
+  :ivar header_hash: key / value store of the data that should be written to the header
+  :vartype header_hash: dict
+  "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+  :vartype HEADER_TIME_FORMAT: str
+  "cvar HEADER_KEYS: List of tuples containing key / types for checking proper formatting of self.header_hash
+  :vartype HEADER_KEYS: list
+  "cvar EVENT_KEYS: List of tuples containing key / types for checking proper formatting of event hashes
+  :vartype EVENT_KEYS: list
+  :cvar EVENT_TIME_FORMAT: Format of the datetimes in the Event lines
+  :vartype EVENT_TIME_FORMAT: str
+  "cvar SFDU_HEADER: Tuple containing the static content of the top and bottom of the header
+  :vartype SFDU_HEADER: tuple
+  """
 
   HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
   HEADER_KEYS = [("MISSION_NAME", str),
@@ -382,12 +603,29 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
                 ("RTLT", datetime.timedelta, 10)]
 
   def __init__(self, filename: str, header_hash: dict=None):
+    """
+    Initialize an DsnViewPeriodPredLegacyEncoder which is meant to read output from the AERIE database and encode it
+    into a report file.
+
+    :param filename: Filepath to Encoded file.
+    :type filename: str
+    :param header_hash: Dictionary of header values
+    :type header_hash: dict
+    """
     logger = logging.getLogger(__name__)
     logger.info("Opening DSN Viewperiod file for Encoding: %s", filename)
     super(DsnViewPeriodPredLegacyEncoder, self).__init__(filename, header_hash)
 
   @classmethod
   def check_event(cls, event_hash: dict) -> bool:
+    """
+    Checks the validity of the formatting of a user inputted event dictionary
+
+    :param event_hash: Contains field information for the event
+    :type event_hash: dict
+    :return: True on valid, False on non valid
+    :rtype: bool
+    """
 
     if super(DsnViewPeriodPredLegacyEncoder, cls).check_event(event_hash) is False:
       return False
@@ -413,11 +651,20 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
     return True
 
   def cast_event(self, event_hash: dict) -> str:
+    """
+    Construct the event line, return it as a string, this function is implemented in subclasses
+
+    :param event_hash: Contains field information for the report event line
+    :type event_hash: dict
+    :return: None
+    :rtype: None
+    """
 
     super(DsnViewPeriodPredLegacyEncoder, self).cast_event(event_hash)
 
     translated_event = event_hash
 
+    # Format the fields and type convert all of the fields to str for writing to the report
     translated_event["TIME"] = translated_event["TIME"].strftime(self.EVENT_TIME_FORMAT)
     translated_event["SPACECRAFT_IDENTIFIER"] = str(translated_event["SPACECRAFT_IDENTIFIER"]).zfill(3)
     translated_event["STATION_IDENTIFIER"] = str(translated_event["STATION_IDENTIFIER"]).zfill(2)
@@ -431,6 +678,7 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
     minutes, seconds = divmod(remainder, 60)
     translated_event["RTLT"] = '{:02}:{:02}:{:04}'.format(int(hours), int(minutes), round(seconds, 1))
 
+    # Use cls.EVENT_KEYS as a blueprint for writing each line
     r = ""
     looper = iter(self.EVENT_KEYS)
 
@@ -452,6 +700,28 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
 
 
 class DsnStationAllocationFileEncoder(Encoder):
+    """
+    Manages state for encoding a DSN Station Allocaation report file
+
+    :ivar _fh: Private file handler used for writing data to the report
+    :vartype _fh: file object
+    :ivar header_hash: key / value store of the data that should be written to the header
+    :vartype header_hash: dict
+    "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+    :vartype HEADER_TIME_FORMAT: str
+    "cvar HEADER_KEYS: List of tuples containing key / types for checking proper formatting of self.header_hash
+    :vartype HEADER_KEYS: list
+    "cvar EVENT_KEYS: List of tuples containing key / types for checking proper formatting of event hashes
+    :vartype EVENT_KEYS: list
+    "cvar SFDU_HEADER: Tuple containing the static content of the top and bottom of the header
+    :vartype SFDU_HEADER: tuple
+    :cvar YY_FORMAT: Format of the datetimes for the YY field of the event line
+    :vartype YY_FORMAT: str
+    :cvar DOY_FORMAT: Format of the datetimes for the DOY field of the event line
+    :vartype DOY_FORMAT: str
+    :cvar HHMM_FORMAT: Format of the datetimes for the HHMM field of the event line
+    :vartype HHMM_FORMAT: str
+    """
 
     HEADER_TIME_FORMAT = "%Y-%jT%H:%M:%S"
     HEADER_KEYS = [("MISSION_NAME", str),
@@ -485,12 +755,29 @@ class DsnStationAllocationFileEncoder(Encoder):
                   ("WORK_CODE_CAT", str, 3),
                   ("RELATE", str, 1)]
 
-    def __init__(self, filename: str, header_hash:dict=None):
+    def __init__(self, filename: str, header_hash: dict=None):
+      """
+      Initialize an DsnStationAllocationFileEncoder which is meant to read output from the AERIE database and encode it into a report file.
+
+      :param filename: Filepath to Encoded file.
+      :type filename: str
+      :param header_hash: Dictionary of header values
+      :type header_hash: dict
+      """
+
       logger = logging.getLogger(__name__)
       logger.info("Opening DSN Station Allocation file for Encoding: %s", filename)
       super(DsnStationAllocationFileEncoder, self).__init__(filename, header_hash)
 
     def cast_event(self, event_hash: dict) -> str:
+        """
+        Checks the validity of the formatting of a user inputted event dictionary
+
+        :param event_hash: Contains field information for the event
+        :type event_hash: dict
+        :return: True on valid, False on non valid
+        :rtype: bool
+        """
 
         super(DsnStationAllocationFileEncoder, self).cast_event(event_hash)
 
@@ -523,6 +810,21 @@ class DsnStationAllocationFileEncoder(Encoder):
 
 class GqlInterface(object):
 
+    """
+    Manages state for encoding a DSN Station Allocaation report file
+
+    :ivar __connection_string: URL to the Hasura database
+    :vartype __connection_string:
+    "cvar INSERT_ACTIVITY_QUERY: Template query for inserting activities into AERIE
+    :vartype INSERT_ACTIVITY_QUERY: str
+    "cvar READ_PLAN_QUERY: Template query for reading plan information from AERIE
+    :vartype READ_PLAN_QUERY: str
+    "cvar READ_ACTIVITY_QUERY: Template query for reading activies from AERIE plan
+    :vartype READ_ACTIVITY_QUERY: str
+    "cvar DEFAULT_CONNECTION_STRING: Default connection string of Localhost if an alternate is not provided
+    :vartype DEFAULT_CONNECTION_STRING: str
+    """
+
     INSERT_ACTIVITY_QUERY = 'mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } }'
     READ_PLAN_QUERY = 'query getPlan($id: Int) {plan(where: {id: {_eq: $id}}) {id name model_id start_time duration} }'
     READ_ACTIVITY_QUERY = 'query getActivity($type: String, $plan_id: Int) {activity_directive(where: {type: {_like: $type}, plan_id: {_eq: $plan_id}}) {start_offset id tags type name metadata arguments} }'
@@ -530,6 +832,12 @@ class GqlInterface(object):
     DEFAULT_CONNECTION_STRING = 'http://localhost:8080/v1/graphql'
 
     def __init__(self, connection_string: str=DEFAULT_CONNECTION_STRING):
+        """
+        Initialize an GqlInterface which retreives and inserts information into the AERIE DB.
+
+        :param connection_string: Connection string to Hasura GraphQL DB
+        :type connection_string: str
+        """
 
         logger = logging.getLogger(__name__)
 
@@ -538,6 +846,14 @@ class GqlInterface(object):
         logger.info("GraphQL Config: api_conn: %s", connection_string)
 
     def get_plan_info_from_id(self, plan_id: int) -> tuple[datetime.datetime, datetime.datetime]:
+        """
+        Retreives the start and end times of an AERIE plan
+
+        :param plan_id: plan_id for the AERIE plan to read
+        :type plan_id: int
+        :return: tuple of the plan start and plan end times in python datetime objects
+        :rtype: tuple
+        """
         logger = logging.getLogger(__name__)
         plans = self.read_plan(plan_id)["data"]["plan"]
 
@@ -553,6 +869,7 @@ class GqlInterface(object):
         plan_start = datetime.datetime.fromisoformat(plan["start_time"])
         plan_name = plan["name"]
 
+        # Convert AERIE Duration string to end time using the start time
         H, MM, SSZ = plan["duration"].split(":")
         plan_end = plan_start + datetime.timedelta(hours=int(H), minutes=int(MM), seconds=float(SSZ))
 
@@ -561,6 +878,17 @@ class GqlInterface(object):
         return plan_start, plan_end
 
     def mux_files(self, decoders: list, plan_id) -> dict:
+        """
+        Accepts a list of decoders and retreives activity information from them. This information is then constructed
+        into AERIE activities and returned in pythonic generator fashion.
+
+        :param decoders: list of Decoder types that will be parsed for information
+        :type decoders: list
+        :param plan_id: plan_id for the AERIE plan to insert into
+        :type plan_id: int
+        :return: None
+        :rtype: None
+        """
 
         assert(isinstance(decoders, list))
         logger = logging.getLogger(__name__)
@@ -586,6 +914,18 @@ class GqlInterface(object):
                 raise ValueError("Invalid Decoder type: %s", type(decoder).__name__)
 
     def demux_files(self, saf_encoder: DsnStationAllocationFileEncoder, vp_encoder: DsnViewPeriodPredLegacyEncoder, plan_id: int) -> None:
+      """
+      Accepts two Encoders and writes activity information to them from the AERIE DB.
+
+      :param saf_encoder: list of Decoder types that will be parsed for information
+      :type saf_encoder: DsnStationAllocationFileEncoder
+      :param vp_encoder: plan_id for the AERIE plan to insert into
+      :type vp_encoder: DsnViewPeriodPredLegacyEncoder
+      :param plan_id: plan_id for the AERIE plan to read from
+      :type plan_id: int
+      :return: None
+      :rtype: None
+      """
 
       logger = logging.getLogger(__name__)
 
@@ -607,6 +947,14 @@ class GqlInterface(object):
       vp_encoder.cast(c)
 
     def create_activities(self, activities: list) -> None:
+        """
+        Inserts a list of activities into the AERIE DB
+
+        :param activities: List of activities to insert into AERIE
+        :type activities: list
+        :return: None
+        :rtype: None
+        """
 
         assert isinstance(activities, list)
 
@@ -623,7 +971,17 @@ class GqlInterface(object):
         )
         logger.debug("create_activities: %s", json.dumps(response.json(), indent=2))
 
-    def read_activities(self, plan_id: int, activity_type: str=None):
+    def read_activities(self, plan_id: int, activity_type: str=None) -> dict:
+      """
+      Read activities of a certain type from AERIE DB
+
+      :param plan_id: plan_id for the AERIE plan to read activities from
+      :type plan_id: int
+      :param activity_type: Name of the activity to filter for
+      :type activity_type: str
+      :return: Response object from Hasura DB
+      :rtype: dict
+      """
 
       assert isinstance(plan_id, (type(None), int))
       assert isinstance(activity_type, (type(None), str))
@@ -647,6 +1005,14 @@ class GqlInterface(object):
       return r
 
     def read_plan(self, id: int):
+      """
+      Read plan metadata from AERIE for a plan id
+
+      :param id: plan id for the AERIE plan to read plan metadata from
+      :type id: int
+      :return: Response object from Hasura DB
+      :rtype: dict
+      """
 
       assert isinstance(id, (type(None), int))
       logger = logging.getLogger(__name__)
@@ -669,6 +1035,16 @@ class GqlInterface(object):
 
     @classmethod
     def convert_to_aerie_offset(cls, plan_start_time: datetime.datetime, activity_start_time: datetime.datetime) -> str:
+        """
+        Convert an absolute event time to an AERIE plan offset so it can be displayed properly.
+
+        :param plan_start_time: Start time of the plan
+        :type plan_start_time: datetime
+        :param activity_start_time: Start time of the activity
+        :type activity_start_time: datetime
+        :return: Formatted string for AERIE of the duration from the start time of the plan
+        :rtype: str
+        """
 
         start_offset_seconds = datetime.timedelta.total_seconds(activity_start_time - plan_start_time)
         hours_offset = start_offset_seconds // 3600
@@ -682,10 +1058,34 @@ class GqlInterface(object):
 
     @classmethod
     def convert_to_aerie_duration(cls, activity_start_time: datetime.datetime, activity_end_time: datetime.datetime) -> int:
+        """
+        Convert a start and end datetime to duration in microseconds which the AERIE Misison Model simulator uses.
+
+        :param activity_start_time: Start time of the activity
+        :type activity_start_time: datetime
+        :param activity_end_time: End time of the activity
+        :type activity_end_time: datetime
+        :return: Duration in microseconds
+        :rtype: int
+        """
         return int((activity_end_time - activity_start_time).total_seconds() * 1e6)
 
     @classmethod
     def convert_dsn_viewperiod_to_gql(cls, plan_id: int, plan_start_time: datetime.datetime, header_segs: dict, event_segs: dict) -> dict:
+        """
+        Convert the output of the DsnViewPeriodPredDecoder event and header dictionary to a GQL query
+
+        :param plan_id: plan_id for the AERIE plan to insert into
+        :type plan_id: int
+        :param plan_start_time: Start time of the plan
+        :type plan_start_time: datetime
+        :param header_segs: Header key / value dictionary from the Decoder object, this is used to populate activity fields
+        :type header_segs: dict
+        :param event_segs: Event key / value dictionary from the Decoder object, this is used to populate activity fields
+        :type event_segs: dict
+        :return: GQL Query object to send to AERIE Hasura DB
+        :rtype: dict
+        """
 
         # Get event fields
         start_offset = cls.convert_to_aerie_offset(plan_start_time, event_segs["TIME"])
@@ -727,6 +1127,20 @@ class GqlInterface(object):
 
     @classmethod
     def convert_dsn_stationallocation_to_gql(cls, plan_id: int, plan_start_time: datetime.datetime, header_segs: dict, event_segs: dict) -> dict:
+        """
+        Convert the output of the DsnStationAllocationFileDecoder event and header dictionary to a GQL query
+    
+        :param plan_id: plan_id for the AERIE plan to insert into
+        :type plan_id: int
+        :param plan_start_time: Start time of the plan
+        :type plan_start_time: datetime
+        :param header_segs: Header key / value dictionary from the Decoder object, this is used to populate activity fields
+        :type header_segs: dict
+        :param event_segs: Event key / value dictionary from the Decoder object, this is used to populate activity fields
+        :type event_segs: dict
+        :return: GQL Query object to send to AERIE Hasura DB
+        :rtype: dict
+        """
 
         # Get event fields
         start_offset = cls.convert_to_aerie_offset(plan_start_time, event_segs["SOA"])
@@ -778,6 +1192,14 @@ class GqlInterface(object):
 
     @classmethod
     def convert_gql_to_dsn_stationallocation(cls, dsn_track_activity: dict) -> dict:
+      """
+      Convert the output of a GQL Query to a StationAllocationEncoder key / value dict
+
+      :param dsn_track_activity: GQL response object from self.read_activities
+      :type dsn_track_activity: dict
+      :return: Event key / value dict for station allocation encoders
+      :rtype: dict
+      """
 
       start_offset = dsn_track_activity["start_offset"]
       arguments = dsn_track_activity["arguments"]
@@ -818,6 +1240,14 @@ class GqlInterface(object):
 
     @classmethod
     def convert_gql_to_dsn_viewperiod(cls, plan_start_time: datetime.datetime, dsn_view_activity: dict) -> dict:
+      """
+      Convert the output of a GQL Query to a ViewPeriodEncoder key / value dict
+
+      :param dsn_track_activity: GQL response object from self.read_activities
+      :type dsn_track_activity: dict
+      :return: Event key / value dict for station allocation encoders
+      :rtype: dict
+      """
 
       start_offset = dsn_view_activity["start_offset"]
       hours, minutes, seconds = start_offset.split(":")
