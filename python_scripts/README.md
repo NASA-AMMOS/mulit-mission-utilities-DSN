@@ -1,4 +1,4 @@
-## Prerequisites
+## Prerequisites for Development
 - Install venv for Python 3.9+ and setup a new virtual enviornment in this directory.
 
 ```sh
@@ -16,6 +16,36 @@ source .venv/bin/activate
 
 ```sh
 pip3 install -r requirements.txt
+```
+
+## Running Tests
+
+- Activate Virtual Environment
+
+```sh
+source .venv/bin/activate
+```
+
+- Run PyTests to automatically setup tests in ./tests directory
+
+```sh
+pytest
+```
+
+## Installing and packaging libraries
+- PIP can be used with the setup.py script to install libaerie system-wide.
+- Python build can be used to create a PyPi compliant package for upload to a python mirror
+
+### Installation
+
+```sh
+pip3 install -e
+```
+
+### Packaging
+
+```sh
+python3 -m build
 ```
 
 ## Running import_activities.py
