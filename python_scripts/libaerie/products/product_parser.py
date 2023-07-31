@@ -880,7 +880,7 @@ class GqlInterface(object):
     def mux_files(self, decoders: list, plan_id) -> dict:
         """
         Accepts a list of decoders and retreives activity information from them. This information is then constructed
-        into AERIE activities and returned in pythonic generator fashion.
+        into AERIE activity GQL mutations and returned in pythonic generator fashion.
 
         :param decoders: list of Decoder types that will be parsed for information
         :type decoders: list
@@ -898,10 +898,37 @@ class GqlInterface(object):
         for decoder in decoders:
 
             if isinstance(decoder, DsnViewPeriodPredLegacyDecoder):
+
+                # Contains the start events for each DSN View Period event
+                # When the end event is found, a view_period_duration event will be created
+                dsn_vp_durations = {}
+
                 for record in decoder.parse():
                     if plan_start > record["TIME"] or record["TIME"] > plan_end:
                         logger.warning("Record %s is out of range for plan id %s, daterange %s to %s", record, plan_id, plan_start.isoformat(), plan_end.isoformat())
-                    yield self.convert_dsn_viewperiod_to_gql(plan_id, plan_start, decoder.header_hash, record)
+
+                    event = record["EVENT"]
+
+                    # Start of new Viewperiod window, store the start event for the station
+                    if event in ("RISE", "AOS HOR MASK", "AOS SL/RT AXIS 1", "AOS SL/RT AXIS 2"):
+                        if record["STATION_IDENTIFIER"] not in dsn_vp_durations:
+                            dsn_vp_durations[record["STATION_IDENTIFIER"]] = record
+                        else:
+                            logger.warning("For Viewperiod %s, Station %s already has a start event", record, record["STATION_IDENTIFIER"])
+
+                    # End of Viewperiod Window, close the event and calculate duration
+                    elif event in ("SET", "LOS HOR MASK", "LOS SL/RT AXIS 1", "LOS SL/RT AXIS 2"):
+                        try:
+                            close_record = dsn_vp_durations.pop(record["STATION_IDENTIFIER"])
+                        except KeyError as ke:
+                            logger.warning("For Viewperiod %s, Station %s does not have a start event", record, record["STATION_IDENTIFIER"])
+                            close_record = None
+
+                        if close_record is not None:
+                            close_record["DURATION"] = self.convert_to_aerie_duration(close_record["TIME"], record["TIME"])
+                            yield self.convert_dsn_viewperiod_duration_to_gql(plan_id, plan_start, decoder.header_hash, close_record)
+
+                    yield self.convert_dsn_viewperiod_event_to_gql(plan_id, plan_start, decoder.header_hash, record)
 
             elif isinstance(decoder, DsnStationAllocationFileDecoder):
                 for record in decoder.parse():
@@ -938,11 +965,11 @@ class GqlInterface(object):
       c = sorted(c, key=lambda event: event['SOA'])
       saf_encoder.cast(c)
 
-      activities = self.read_activities(plan_id, "DSN_View_Period")
+      activities = self.read_activities(plan_id, "DSN_View_Period_Event")
 
       c = []
       for dsn_view_activity in activities["data"]["activity_directive"]:
-        c.append(self.convert_gql_to_dsn_viewperiod(plan_start, dsn_view_activity))
+        c.append(self.convert_gql_to_dsn_viewperiod_event(plan_start, dsn_view_activity))
       c = sorted(c, key=lambda event: event['TIME'])
       vp_encoder.cast(c)
 
@@ -1071,7 +1098,7 @@ class GqlInterface(object):
         return int((activity_end_time - activity_start_time).total_seconds() * 1e6)
 
     @classmethod
-    def convert_dsn_viewperiod_to_gql(cls, plan_id: int, plan_start_time: datetime.datetime, header_segs: dict, event_segs: dict) -> dict:
+    def convert_dsn_viewperiod_event_to_gql(cls, plan_id: int, plan_start_time: datetime.datetime, header_segs: dict, event_segs: dict) -> dict:
         """
         Convert the output of the DsnViewPeriodPredDecoder event and header dictionary to a GQL query
 
@@ -1120,16 +1147,59 @@ class GqlInterface(object):
                 'rtlt': rtlt
             },
             'plan_id': plan_id,
-            'name': 'DSN View Period',
+            'name': 'VP Event',
             'start_offset': start_offset,
-            'type': 'DSN_View_Period'
+            'type': 'DSN_View_Period_Event'
         }
+
+    @classmethod
+    def convert_dsn_viewperiod_duration_to_gql(cls, plan_id: int, plan_start_time: datetime.datetime, header_segs: dict, event_segs: dict) -> dict:
+      """
+      Convert the output of the DsnViewPeriodPredDecoder event and header dictionary to a GQL query
+
+      :param plan_id: plan_id for the AERIE plan to insert into
+      :type plan_id: int
+      :param plan_start_time: Start time of the plan
+      :type plan_start_time: datetime
+      :param header_segs: Header key / value dictionary from the Decoder object, this is used to populate activity fields
+      :type header_segs: dict
+      :param event_segs: Event key / value dictionary from the Decoder object, this is used to populate activity fields
+      :type event_segs: dict
+      :return: GQL Query object to send to AERIE Hasura DB
+      :rtype: dict
+      """
+
+      # Get event fields
+      start_offset = cls.convert_to_aerie_offset(plan_start_time, event_segs["TIME"])
+      mission_name = header_segs["MISSION_NAME"]
+      spacecraft_name = header_segs["SPACECRAFT_NAME"]
+      naif_spacecraft_id = -header_segs["DSN_SPACECRAFT_NUM"]
+      dsn_spacecraft_id = header_segs["DSN_SPACECRAFT_NUM"]
+      station_identifier = event_segs["STATION_IDENTIFIER"]
+      pass_number = event_segs["PASS"]
+      duration = event_segs["DURATION"]
+
+      return {
+        'arguments': {
+          'mission_name': mission_name,
+          'spacecraft_name': spacecraft_name,
+          'NAIF_spacecraft_ID': naif_spacecraft_id,
+          'dsn_spacecraft_ID': dsn_spacecraft_id,
+          'station_identifier': station_identifier,
+          'pass_number': pass_number,
+          'duration': duration
+        },
+        'plan_id': plan_id,
+        'name': 'DSS-%s View' % station_identifier,
+        'start_offset': start_offset,
+        'type': 'DSN_View_Period_Duration'
+      }
 
     @classmethod
     def convert_dsn_stationallocation_to_gql(cls, plan_id: int, plan_start_time: datetime.datetime, header_segs: dict, event_segs: dict) -> dict:
         """
         Convert the output of the DsnStationAllocationFileDecoder event and header dictionary to a GQL query
-    
+
         :param plan_id: plan_id for the AERIE plan to insert into
         :type plan_id: int
         :param plan_start_time: Start time of the plan
@@ -1239,7 +1309,7 @@ class GqlInterface(object):
       }
 
     @classmethod
-    def convert_gql_to_dsn_viewperiod(cls, plan_start_time: datetime.datetime, dsn_view_activity: dict) -> dict:
+    def convert_gql_to_dsn_viewperiod_event(cls, plan_start_time: datetime.datetime, dsn_view_activity: dict) -> dict:
       """
       Convert the output of a GQL Query to a ViewPeriodEncoder key / value dict
 
