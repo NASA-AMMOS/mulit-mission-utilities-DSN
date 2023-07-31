@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "libaerie"
+version = "2023.07.31"
+dependencies = [
+    "requests",
+    'importlib-metadata; python_version<"3.8"',
+]
