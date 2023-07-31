@@ -4,12 +4,35 @@ import os
 import logging
 import requests
 import json
+import io
 
+from typing import Union
 from collections.abc import Iterable
 from abc import ABC, abstractmethod
 
 
-class Decoder(ABC):
+class Decoder(object):
+
+    def __init__(self, filename: Union[str | io.IOBase]):
+        logger = logging.getLogger(__name__)
+
+        if isinstance(filename, io.IOBase):
+            self._fh = filename
+        # Check if filepath is valid
+        elif os.path.isfile(filename):
+            try:
+                self._fh = open(filename, "r")
+            except Exception as e:
+                logger.exception(e)
+        else:
+            logging.error("File not found: '%s'", filename)
+            raise FileNotFoundError("File not found: %s" % filename)
+
+        try:
+            self.filename = self._fh.name
+        except AttributeError:
+            self.filename = "Buffered_IO"
+        self.header_hash = None
 
     @abstractmethod
     def parse(self):
@@ -35,27 +58,18 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
 
     EVENT_RECORD_REGEX = "(?P<TIME>.{15}).(?P<EVENT>.{16}).(?P<SPACECRAFT_IDENTIFIER>.{3}).(?P<STATION_IDENTIFIER>.{2}).(?P<PASS>.{4}).(?P<AZIMUTH>.{5}).(?P<ELEVATION>.{5}).(?P<AZ_LHA_X>.{5}).(?P<EL_DEC_Y>.{5}).(?P<RTLT>.{10})"
 
-    def __init__(self, filename: str):
+    def __init__(self, filename: Union[str | io.IOBase]):
         """
         Initialize a DsnViewPeriodPredLegacyDecoder which reads information from DSN View Period files.
 
         :param filename: Filepath to View Period file.
-        :type filename: str
+        :type filename: str | io.IOBase
         """
+
         logger = logging.getLogger(__name__)
+        logger.info("Opening DSN View Period file for Decoding: %s", filename)
+        super(DsnViewPeriodPredLegacyDecoder, self).__init__(filename)
 
-        # Check if filepath is valid
-        if not os.path.isfile(filename):
-            logging.error("DSN Viewperiod file not found: '%s'", filename)
-            raise FileNotFoundError("DSN Viewperiod file not found: %s" % filename)
-
-        logger.info("Opening DSN Viewperiod file for Decoding: %s", filename)
-        try:
-            self._fh = open(filename, "r")
-        except Exception as e:
-            logger.exception(e)
-
-        self.header_hash = None
     @classmethod
     def chop_header_line(cls, line: str) -> tuple:
         """
@@ -150,7 +164,7 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
         """
 
         logger = logging.getLogger(__name__)
-        logger.info("Parsing DSN View Period File: %s", self._fh.name)
+        logger.info("Parsing DSN View Period File: %s",self.filename)
 
         # Parse the Viewperiod header
         self.read_header()
@@ -175,7 +189,7 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
             num_r+=1
             yield r
 
-        logger.info("Got %s activites from %s", num_r, self._fh.name)
+        logger.info("Got %s activites from %s", num_r, self.filename)
 
     @classmethod
     def rtlt_to_timedelta(cls, rtlt_dur_str: str) -> datetime.timedelta:
@@ -214,27 +228,17 @@ class DsnStationAllocationFileDecoder(Decoder):
 
     EVENT_RECORD_REGEX = "(?P<CHANGE_INDICATOR>.)(?P<YY>.{2}).(?P<DOY>.{3}).(?P<SOA>.{4}).(?P<BOT>.{4}).(?P<EOT>.{4}).(?P<EOA>.{4}).(?P<ANTENNA_ID>.{6}).(?P<PROJECT_ID>.{5}).(?P<DESCRIPTION>.{16}).(?P<PASS>.{4}).(?P<CONFIG_CODE>.{6})(?P<SOE_FLAG>.).(?P<WORK_CODE_CAT>.{3}).(?P<RELATE>.)."
 
-    def __init__(self, filename: str):
+    def __init__(self, filename: Union[str | io.IOBase]):
         """
         Initialize a DsnStationAllocationFileDecoder which reads information from DSN Station Allocation files.
 
         :param filename: Filepath to Station Allocation file.
-        :type filename: str
+        :type filename: str | io.IOBase
         """
 
         logger = logging.getLogger(__name__)
-
-        if not os.path.isfile(filename):
-            logging.error("DSN Station Allocation file not found: '%s'", filename)
-            raise FileNotFoundError("DSN Station Allocation file not found: %s" % filename)
-
         logger.info("Opening DSN Station Allocation file for Decoding: %s", filename)
-        try:
-            self._fh = open(filename, "r")
-        except Exception as e:
-            logger.exception(e)
-
-        self.header_hash = None
+        super(DsnStationAllocationFileDecoder, self).__init__(filename)
 
     @classmethod
     def chop_header_line(cls, line: str):
@@ -326,7 +330,7 @@ class DsnStationAllocationFileDecoder(Decoder):
         """
 
         logger = logging.getLogger(__name__)
-        logger.info("Parsing DSN Station Allocation File: %s", self._fh.name)
+        logger.info("Parsing DSN Station Allocation File: %s", self.filename)
 
         self.read_header()
 
@@ -359,7 +363,7 @@ class DsnStationAllocationFileDecoder(Decoder):
             num_r += 1
             yield r
 
-        logger.info("Got %s activites from %s", num_r, self._fh.name)
+        logger.info("Got %s activites from %s", num_r, self.filename)
 
     @classmethod
     def rtlt_to_timedelta(cls, rtlt_dur_str: str) -> datetime.timedelta:
@@ -401,22 +405,30 @@ class Encoder(object):
   EVENT_KEYS = []
   SFDU_HEADER = ()
 
-  def __init__(self, filename: str, header_hash:dict=None):
+  def __init__(self, filename: Union[str | io.IOBase], header_hash:dict=None):
     """
     Initialize a Encoder which is meant to read output from the AERIE database and encode it into a report file.
 
     :param filename: Filepath to Encoded file.
-    :type filename: str
+    :type filename: str | io.IOBase
     :param header_hash: Dictionary of header values
     :type header_hash: dict
     """
 
     logger = logging.getLogger(__name__)
-    try:
-      self._fh = open(filename, "w")
-    except Exception as e:
-      logger.exception(e)
 
+    if isinstance(filename, io.IOBase):
+      self._fh = filename
+    else:
+      try:
+        self._fh = open(filename, "w")
+      except Exception as e:
+        logger.exception(e)
+
+    try:
+      self.filename = self._fh.name
+    except AttributeError:
+      self.filename = "Buffered_IO"
     self.header_hash = header_hash
     self.header_flag = False
 
@@ -551,10 +563,10 @@ class Encoder(object):
       self._fh.write(self.cast_event(event_hash))
       num_r += 1
 
-    logger.info("Encoded %s activities to %s", num_r, self._fh.name)
+    logger.info("Encoded %s activities to %s", num_r, self.filename)
 
-    logger.debug("Closing file: %s", self._fh.name)
-    self._fh.close()
+    #logger.debug("Closing file: %s", self.filename)
+    #self._fh.close()
 
 
 class DsnViewPeriodPredLegacyEncoder(Encoder):
@@ -602,7 +614,7 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
                 ("EL_DEC_Y", float, 5),
                 ("RTLT", datetime.timedelta, 10)]
 
-  def __init__(self, filename: str, header_hash: dict=None):
+  def __init__(self, filename: Union[str, io.IOBase], header_hash: dict=None):
     """
     Initialize an DsnViewPeriodPredLegacyEncoder which is meant to read output from the AERIE database and encode it
     into a report file.
@@ -1353,18 +1365,3 @@ if __name__ == "__main__":
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
-    #saf_file = DsnStationAllocationFileDecoder("../../M20_20230_20272_TEST.SAF")
-    #saf_header = saf_file.read_header()
-    #saf_iter = saf_file.parse()
-    #DsnStationAllocationFileEncoder.cast("./outtest.SAF", saf_header, saf_iter)
-
-    #vp_file = DsnViewPeriodPredLegacyDecoder("../../M20_20223_20284_TEST.VP")
-    #vp_header = vp_file.read_header()
-    #vp_iter = vp_file.parse()
-    #DsnViewPeriodPredLegacyEncoder.cast("./outtest.VP", vp_header, vp_iter)
-
-
-
-    #GqlInterface(0, datetime.datetime.now()).read_plan(id=9)
-    #print(GqlInterface().read_activities(23, "DSN_View_Period"))
-    #GqlInterface(0, datetime.datetime.now()).mux_files([vp_file, saf_file])
