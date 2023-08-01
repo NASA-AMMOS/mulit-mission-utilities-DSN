@@ -12,8 +12,25 @@ from abc import ABC, abstractmethod
 
 
 class Decoder(object):
+    """
+    Manages state for decoding state files
+
+    :ivar _fh: Private file handler used for reading data from the report
+    :vartype _fh: file object
+    :ivar header_hash: key / value store of the data contained in the header
+    :vartype header_hash: dict
+    :ivar filename: Filepath to the file being decoded
+    :vartype header_hash: str
+
+    """
 
     def __init__(self, filename: Union[str | io.IOBase]):
+        """
+        Initialize a Decoder which handles the generic functionality of Decoder classes.
+
+        :param filename: Filepath to View Period file.
+        :type filename: str | io.IOBase
+        """
         logger = logging.getLogger(__name__)
 
         if isinstance(filename, io.IOBase):
@@ -47,9 +64,9 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
     :vartype _fh: file object
     :ivar header_hash: key / value store of the data contained in the header
     :vartype header_hash: dict
-    "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+    :cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
     :vartype HEADER_TIME_FORMAT: str
-    "cvar EVENT_TIME_FORMAT: Format of the datetimes in the events
+    :cvar EVENT_TIME_FORMAT: Format of the datetimes in the events
     :vartype EVENT_TIME_FORMAT: str
     """
 
@@ -217,9 +234,9 @@ class DsnStationAllocationFileDecoder(Decoder):
     :vartype _fh: file object
     :ivar header_hash: key / value store of the data contained in the header
     :vartype header_hash: dict
-    "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+    :cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
     :vartype HEADER_TIME_FORMAT: str
-    "cvar EVENT_TIME_FORMAT: Format of the datetimes in the events
+    :cvar EVENT_TIME_FORMAT: Format of the datetimes in the events
     :vartype EVENT_TIME_FORMAT: str
     """
 
@@ -388,15 +405,17 @@ class Encoder(object):
 
   :ivar _fh: Private file handler used for writing data to the report
   :vartype _fh: file object
+    :ivar filename: Filepath to the file being decoded
+    :vartype header_hash: str
   :ivar header_hash: key / value store of the data that should be written to the header
   :vartype header_hash: dict
-  "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+  :cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
   :vartype HEADER_TIME_FORMAT: str
-  "cvar HEADER_KEYS: List of tuples containing key / types for checking proper formatting of self.header_hash
+  :cvar HEADER_KEYS: List of tuples containing key / types for checking proper formatting of self.header_hash
   :vartype HEADER_KEYS: list
-  "cvar EVENT_KEYS: List of tuples containing key / types for checking proper formatting of event hashes
+  :cvar EVENT_KEYS: List of tuples containing key / types for checking proper formatting of event hashes
   :vartype EVENT_KEYS: list
-  "cvar SFDU_HEADER: Tuple containing the static content of the top and bottom of the header
+  :cvar SFDU_HEADER: Tuple containing the static content of the top and bottom of the header
   :vartype SFDU_KEYS: tuple
   """
 
@@ -407,7 +426,7 @@ class Encoder(object):
 
   def __init__(self, filename: Union[str | io.IOBase], header_hash:dict=None):
     """
-    Initialize a Encoder which is meant to read output from the AERIE database and encode it into a report file.
+    Initialize an Encoder which is meant to read output from the AERIE database and encode it into a report file.
 
     :param filename: Filepath to Encoded file.
     :type filename: str | io.IOBase
@@ -440,7 +459,7 @@ class Encoder(object):
 
     :param header_hash: Contains field information for the report header
     :type header_hash: dict
-    :return: True on valid, False on non valid
+    :return: True on valid, False on non-valid
     :rtype: bool
     """
     assert(isinstance(header_hash, dict))
@@ -497,7 +516,7 @@ class Encoder(object):
 
     :param event_hash: Contains field information for the event
     :type event_hash: dict
-    :return: True on valid, False on non valid
+    :return: True on valid, False on non-valid
     :rtype: bool
     """
 
@@ -577,15 +596,15 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
   :vartype _fh: file object
   :ivar header_hash: key / value store of the data that should be written to the header
   :vartype header_hash: dict
-  "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+  :cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
   :vartype HEADER_TIME_FORMAT: str
-  "cvar HEADER_KEYS: List of tuples containing key / types for checking proper formatting of self.header_hash
+  :cvar HEADER_KEYS: List of tuples containing key / types for checking proper formatting of self.header_hash
   :vartype HEADER_KEYS: list
-  "cvar EVENT_KEYS: List of tuples containing key / types for checking proper formatting of event hashes
+  :cvar EVENT_KEYS: List of tuples containing key / types for checking proper formatting of event hashes
   :vartype EVENT_KEYS: list
   :cvar EVENT_TIME_FORMAT: Format of the datetimes in the Event lines
   :vartype EVENT_TIME_FORMAT: str
-  "cvar SFDU_HEADER: Tuple containing the static content of the top and bottom of the header
+  :cvar SFDU_HEADER: Tuple containing the static content of the top and bottom of the header
   :vartype SFDU_HEADER: tuple
   """
 
@@ -635,7 +654,7 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
 
     :param event_hash: Contains field information for the event
     :type event_hash: dict
-    :return: True on valid, False on non valid
+    :return: True on valid, False on non-valid
     :rtype: bool
     """
 
@@ -713,19 +732,19 @@ class DsnViewPeriodPredLegacyEncoder(Encoder):
 
 class DsnStationAllocationFileEncoder(Encoder):
     """
-    Manages state for encoding a DSN Station Allocaation report file
+    Manages state for encoding a DSN Station Allocation report file
 
     :ivar _fh: Private file handler used for writing data to the report
     :vartype _fh: file object
     :ivar header_hash: key / value store of the data that should be written to the header
     :vartype header_hash: dict
-    "cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
+    :cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
     :vartype HEADER_TIME_FORMAT: str
-    "cvar HEADER_KEYS: List of tuples containing key / types for checking proper formatting of self.header_hash
+    :cvar HEADER_KEYS: List of tuples containing key / types for checking proper formatting of self.header_hash
     :vartype HEADER_KEYS: list
-    "cvar EVENT_KEYS: List of tuples containing key / types for checking proper formatting of event hashes
+    :cvar EVENT_KEYS: List of tuples containing key / types for checking proper formatting of event hashes
     :vartype EVENT_KEYS: list
-    "cvar SFDU_HEADER: Tuple containing the static content of the top and bottom of the header
+    :cvar SFDU_HEADER: Tuple containing the static content of the top and bottom of the header
     :vartype SFDU_HEADER: tuple
     :cvar YY_FORMAT: Format of the datetimes for the YY field of the event line
     :vartype YY_FORMAT: str
@@ -787,7 +806,7 @@ class DsnStationAllocationFileEncoder(Encoder):
 
         :param event_hash: Contains field information for the event
         :type event_hash: dict
-        :return: True on valid, False on non valid
+        :return: True on valid, False on non-valid
         :rtype: bool
         """
 
@@ -823,17 +842,17 @@ class DsnStationAllocationFileEncoder(Encoder):
 class GqlInterface(object):
 
     """
-    Manages state for encoding a DSN Station Allocaation report file
+    Manages state for encoding a DSN Station Allocation report file
 
     :ivar __connection_string: URL to the Hasura database
     :vartype __connection_string:
-    "cvar INSERT_ACTIVITY_QUERY: Template query for inserting activities into AERIE
+    :cvar INSERT_ACTIVITY_QUERY: Template query for inserting activities into AERIE
     :vartype INSERT_ACTIVITY_QUERY: str
-    "cvar READ_PLAN_QUERY: Template query for reading plan information from AERIE
+    :cvar READ_PLAN_QUERY: Template query for reading plan information from AERIE
     :vartype READ_PLAN_QUERY: str
-    "cvar READ_ACTIVITY_QUERY: Template query for reading activies from AERIE plan
+    :cvar READ_ACTIVITY_QUERY: Template query for reading activies from AERIE plan
     :vartype READ_ACTIVITY_QUERY: str
-    "cvar DEFAULT_CONNECTION_STRING: Default connection string of Localhost if an alternate is not provided
+    :cvar DEFAULT_CONNECTION_STRING: Default connection string of Localhost if an alternate is not provided
     :vartype DEFAULT_CONNECTION_STRING: str
     """
 
@@ -1075,7 +1094,7 @@ class GqlInterface(object):
     @classmethod
     def convert_to_aerie_offset(cls, plan_start_time: datetime.datetime, activity_start_time: datetime.datetime) -> str:
         """
-        Convert an absolute event time to an AERIE plan offset so it can be displayed properly.
+        Convert an absolute event time to an AERIE plan offset, so it can be displayed properly.
 
         :param plan_start_time: Start time of the plan
         :type plan_start_time: datetime
@@ -1358,10 +1377,3 @@ class GqlInterface(object):
         "EL_DEC_Y": el_dec_y,
         "RTLT": rtlt
       }
-
-
-if __name__ == "__main__":
-    logging.basicConfig()
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
-
