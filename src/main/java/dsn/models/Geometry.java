@@ -1,17 +1,8 @@
 package dsn.models;
 
 import gov.nasa.jpl.aerie.contrib.models.Register;
-import gov.nasa.jpl.aerie.merlin.framework.ModelActions;
-import gov.nasa.jpl.aerie.merlin.protocol.types.Duration;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Geometry {
   public final Register<Double> settable_value = Register.forImmutable(0.0);
@@ -28,7 +19,7 @@ public class Geometry {
       ModelActions.defer(event_duration_since_plan_start, () -> ModelActions.replaying(() -> settable_value.set(data[finalI])));
     } */
 
-
+/*
     InputStream input_data = this.getClass().getResourceAsStream("/data.json");
     BufferedReader reader = new BufferedReader(new InputStreamReader(input_data));
 
@@ -74,7 +65,7 @@ public class Geometry {
     ModelActions.defer(Duration.HOUR, ModelActions.replaying(() -> fooString1.set("HAHA")));
   //  fooString1.set("hahahha");
 
-
+*/
   }
 
 }
