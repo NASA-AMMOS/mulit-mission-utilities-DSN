@@ -13,10 +13,16 @@ def test_saf_decoder_encoder(saf_content):
     saf_iter = saf_file.parse()
 
     saf_out = io.StringIO()
+    close = saf_out.close
+    saf_out.close = lambda: None
+
     saf_encoder = DsnStationAllocationFileEncoder(saf_out, saf_header)
     saf_encoder.cast(saf_iter)
 
-    assert(saf_out.getvalue() == saf_content)
+    try:
+        assert(saf_out.getvalue() == saf_content)
+    finally:
+        close()
 
 
 def test_vp_decoder_encoder(vp_content):
@@ -26,7 +32,13 @@ def test_vp_decoder_encoder(vp_content):
     vp_iter = vp_file.parse()
 
     vp_out = io.StringIO()
+    close = vp_out.close
+    vp_out.close = lambda: None
+
     vp_encoder = DsnViewPeriodPredLegacyEncoder(vp_out, vp_header)
     vp_encoder.cast(vp_iter)
 
-    assert(vp_out.getvalue() == vp_content)
+    try:
+        assert(vp_out.getvalue() == vp_content)
+    finally:
+        close()
