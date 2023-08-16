@@ -1,4 +1,5 @@
 import spiceypy
+import spiceypy.utils.support_types as stypes
 from datetime import datetime, timedelta
 import numpy as np
 
@@ -75,8 +76,6 @@ def el_az_computer(utc_timestr: str, stations: list, spacecraft: str, dss_data, 
 
 	return
 
-
-
 # takes the start and end UTC time as string as well as the step in seconds
 def el_az_driver(config):
 	''' Prints azimuth and elevation data out to file
@@ -103,6 +102,36 @@ def el_az_driver(config):
 		results = el_az_computer(this_step.strftime(time_format), config.chosen_dss, str(config.spacecraft), config.dss_data, elapsed_seconds)
 		this_step += timedelta(seconds = config.step)
 	return
+	
+def view_pr():
+	MAXIVL = 1000
+	MAXWIN = 2 * MAXIVL
+	srfpt  = 'DSS-14'
+	obsfrm = 'DSS-14_TOPO'
+	target =  '-159'
+	abcorr = 'CN+S'
+	start  = '2028 MAY 2 TDB'
+	stop   = '2028 MAY 6 TDB'
+	elvlim =  6.0
+	revlim = spiceypy.rpd() * elvlim
+	crdsys = 'LATITUDINAL'
+	coord  = 'LATITUDE'
+	relate = '>'
+	adjust = 0.0
+	stepsz = 300.0
+	etbeg = spiceypy.str2et( start )
+	etend = spiceypy.str2et( stop  )
+
+	cnfine = stypes.SPICEDOUBLE_CELL(2)
+	spiceypy.wninsd( etbeg, etend, cnfine )
+	riswin = stypes.SPICEDOUBLE_CELL( MAXWIN )
+	spiceypy.gfposc( target, obsfrm, abcorr, srfpt,
+	crdsys, coord,  relate, revlim,
+	adjust, stepsz, MAXIVL, cnfine, riswin )
+
+	result = spiceypy.gfposc(target, obsfrm, abcorr, srfpt,crdsys, coord,  
+		relate, revlim,adjust, stepsz, MAXIVL, cnfine, riswin )
+	print(riswin)
 
 time_format = "%Y-%m-%dT%H:%M:%S.%f"
 start = "2025-08-18T00:00:00.00"
@@ -112,5 +141,6 @@ chosen_dss = ['DSS-13','DSS-14', 'DSS-25', 'DSS-26', 'DSS-34', 'DSS-65']
 spacecraft = -159 	# -159 is Clipper
 
 config = python_dss_configuration(time_format, start, end, step_size, chosen_dss, spacecraft)
-el_az_driver(config)
-config.print_az_el_data()
+#el_az_driver(config)
+#config.print_az_el_data()
+view_pr()
