@@ -393,8 +393,8 @@ class Encoder(object):
 
   :ivar _fh: Private file handler used for writing data to the report
   :vartype _fh: file object
-    :ivar filename: Filepath to the file being decoded
-    :vartype header_dict: str
+  :ivar filename: Filepath to the file being decoded
+  :vartype header_dict: str
   :ivar header_dict: key / value store of the data that should be written to the header
   :vartype header_dict: dict
   :cvar HEADER_TIME_FORMAT: Format of the datetimes in the header
@@ -918,6 +918,17 @@ class GqlInterface(object):
         for decoder in decoders:
 
             if isinstance(decoder, DsnViewPeriodPredLegacyDecoder):
+                """
+                WRT view_period_duration activities vs view_period_events
+
+                The "Event" activities do not contain the duration of the view period, they contain the full information
+                about the change in view state for a particular station / spacecraft combination at a point in time.
+                The "Duration" activities are derived from the "Event" activities. They contain a derived collection
+                of the information that is relevant to the whole window of the view period. We discussed
+                how to capture the actual duration of a view period within Aerie, and we decided to create a new Event
+                type (Duration) and do this work in Python. We chose not to put it in a resource because it would limit
+                the amount of missions that could appear on a plan to ones that were predefined in the model.
+                """
 
                 # Contains the start events for each DSN View Period event
                 # When the end event is found, a view_period_duration event will be created
@@ -938,17 +949,46 @@ class GqlInterface(object):
 
                     # End of Viewperiod Window, close the event and calculate duration
                     elif event in ("SET", "LOS HOR MASK", "LOS SL/RT AXIS 1", "LOS SL/RT AXIS 2"):
+
+                        close_record = None
+
+                        # Get the start view_period for the station ID
                         try:
                             close_record = dsn_vp_durations.pop(record["STATION_IDENTIFIER"])
+                            end_time = record["TIME"]
                         except KeyError as ke:
+                            # Handle edge case where a view period has started before the file begins
+
+                            # If a view_period start does not exist use the start time of the file as the duration start
                             logger.warning("For Viewperiod %s, Station %s does not have a start event", record, record["STATION_IDENTIFIER"])
-                            close_record = None
+
+                            # Clone the current event to use as the base for a start of view_period duration
+                            clone_record = record.copy()
+
+                            # Store the end time of the event and set the event's start time to the file start
+                            end_time = clone_record["TIME"]
+                            clone_record["TIME"] = decoder.header_dict["APPLICABLE_START_TIME"]
+                            clone_record["DURATION"] = self.convert_to_aerie_duration(clone_record["TIME"], end_time)
+
+                            yield self.convert_dsn_viewperiod_duration_to_gql(plan_id, plan_start, decoder.header_dict, clone_record)
 
                         if close_record is not None:
                             close_record["DURATION"] = self.convert_to_aerie_duration(close_record["TIME"], record["TIME"])
                             yield self.convert_dsn_viewperiod_duration_to_gql(plan_id, plan_start, decoder.header_dict, close_record)
 
                     yield self.convert_dsn_viewperiod_event_to_gql(plan_id, plan_start, decoder.header_dict, record)
+
+                # Handle edge case where a view period has started and not stopped before the file end
+                for key in dsn_vp_durations:
+
+                    # Get the incomplete duration activity to close it out
+                    record = dsn_vp_durations[key]
+                    logger.warning("For Viewperiod %s, Station %s does not have an end event", record, record["STATION_IDENTIFIER"])
+
+                    # Calculate duration of activity by using the end time of the file
+                    record["DURATION"] = self.convert_to_aerie_duration(record["TIME"], decoder.header_dict["APPLICABLE_STOP_TIME"])
+
+                    yield self.convert_dsn_viewperiod_duration_to_gql(plan_id, plan_start, decoder.header_dict, record)
 
             elif isinstance(decoder, DsnStationAllocationFileDecoder):
                 for record in decoder.parse():
