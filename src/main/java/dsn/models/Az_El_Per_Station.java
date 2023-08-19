@@ -19,7 +19,7 @@ public class Az_El_Per_Station {
 
   public Az_El_Per_Station(String path) {
 
-    InputStream inputData = this.getClass().getResourceAsStream("/data.json");
+    InputStream inputData = this.getClass().getResourceAsStream("/az_el_DSS-13.txt");
     BufferedReader reader = new BufferedReader(new InputStreamReader(inputData));
 
     String datum = "empty";

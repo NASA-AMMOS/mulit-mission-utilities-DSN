@@ -25,7 +25,7 @@ class python_dss_configuration:
 
 			data = self.dss_data[antenna]
 			data_array = np.transpose(np.array([data.elapsed_seconds, data.az, data.el]))
-			np.savetxt(file_name, data_array, fmt='%d')
+			np.savetxt(file_name, data_array, fmt='%1.6f')
 
 
 class dss_az_el_data:
@@ -141,6 +141,6 @@ chosen_dss = ['DSS-13','DSS-14', 'DSS-25', 'DSS-26', 'DSS-34', 'DSS-65']
 spacecraft = -159 	# -159 is Clipper
 
 config = python_dss_configuration(time_format, start, end, step_size, chosen_dss, spacecraft)
-#el_az_driver(config)
-#config.print_az_el_data()
-view_pr()
+el_az_driver(config)
+config.print_az_el_data()
+#view_pr()
