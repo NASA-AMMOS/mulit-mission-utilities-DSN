@@ -4,7 +4,10 @@ import gov.nasa.jpl.aerie.contrib.models.Register;
 import gov.nasa.jpl.aerie.merlin.framework.ModelActions;
 import gov.nasa.jpl.aerie.merlin.protocol.types.Duration;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.StringTokenizer;
 
 
@@ -16,7 +19,7 @@ public class Az_El_Per_Station {
 
   public Az_El_Per_Station(String path) {
 
-    InputStream inputData = this.getClass().getResourceAsStream("/az_el_DSS-13.txt");
+    InputStream inputData = this.getClass().getResourceAsStream("/data.json");
     BufferedReader reader = new BufferedReader(new InputStreamReader(inputData));
 
     String datum = "empty";
@@ -39,14 +42,14 @@ public class Az_El_Per_Station {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
+
+      Duration durationElapsed = Duration.duration((long) secondsElapsed, Duration.SECONDS);
+      double finalElevation = elevationFromFile;
+      double finalAzimuth = azimuthFromFile;
+
+      ModelActions.defer(durationElapsed, ModelActions.replaying(() -> elevation.set(finalElevation)));
+      ModelActions.defer(durationElapsed, ModelActions.replaying(() -> azimuth.set(finalAzimuth)));
     }
-
-    Duration durationElapsed = Duration.duration((long) secondsElapsed, Duration.SECONDS);
-    double finalElevation = elevationFromFile;
-    double finalAzimuth = azimuthFromFile;
-
-    ModelActions.defer(durationElapsed, ModelActions.replaying(() -> elevation.set(finalElevation)));
-    ModelActions.defer(durationElapsed, ModelActions.replaying(() -> azimuth.set(finalAzimuth)));
   }
 
 }
