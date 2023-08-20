@@ -35,6 +35,7 @@ The Geometry Finder Spice functions compute the View Period for the specified DS
 * [SPICEDOUBLE_CELL](https://spiceypy.readthedocs.io/en/v2.3.1/documentation.html#spiceypy.utils.support_types.SPICEDOUBLE_CELL)
 
   ### Kernels Needed
+  You can use the provided [Meta-Kernel](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/blob/main/python_scripts/libaerie/spice_calcs/erotat.tm) and kernels in this repository, or you can use your own. There are the kernels needed for the geometric computations.
 * Leap Seconds (.tls)
 * Solar System Ephemeris (.bsp)
 * Spacecraft Ephemeris (.bsp)
@@ -42,5 +43,5 @@ The Geometry Finder Spice functions compute the View Period for the specified DS
 * Earth Topocentric Frame Kernel (.tf)
 * NAIF PCK (Planetary Constants Kernel) (.tpc)
 * Earth binary PCK (Earth orientation data) (.bpc)
-  
+* Meta-Kernel (.tm)
   
