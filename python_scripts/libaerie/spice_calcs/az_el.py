@@ -8,7 +8,7 @@ import requests
 spiceypy.furnsh("erotat.tm")
 
 class python_dss_configuration:
-	def __init__(self, time_format, start, end, step, chosen_dss, spacecraft):
+	def __init__(self, time_format, start, end, step, chosen_dss, spacecraft, plan_id):
 		self.time_format = time_format
 		self.start = start
 		self.end = end
@@ -16,6 +16,7 @@ class python_dss_configuration:
 		self.chosen_dss = chosen_dss
 		self.spacecraft = spacecraft
 		self.dss_data = {}
+		self.plan_id = plan_id
 
 		for antenna in chosen_dss:
 			self.dss_data[antenna] = dss_az_el_data()
@@ -23,12 +24,10 @@ class python_dss_configuration:
 	def print_az_el_data(self):
 		for antenna in self.chosen_dss:
 			file_name = "../../../src/main/resources/az_el_" + antenna + ".txt"
-			#file = open(file_name, "w")
 
 			data = self.dss_data[antenna]
 			data_array = np.transpose(np.array([data.elapsed_seconds, data.az, data.el]))
 			np.savetxt(file_name, data_array, fmt='%1.6f')
-
 
 class dss_az_el_data:
 	def __init__(self):
@@ -41,7 +40,6 @@ class dss_az_el_data:
 		self.el.append(el)
 		self.az.append(az)
 
-# returns el and az of station as seen by Clipper in degrees
 def el_az_computer(utc_timestr: str, stations: list, spacecraft: str, dss_data, elapsed_seconds:float):
 	'''Computes azimuth and elevation of DSN from S/C p.o.v. for a given UTC time
 
@@ -78,7 +76,6 @@ def el_az_computer(utc_timestr: str, stations: list, spacecraft: str, dss_data, 
 
 	return
 
-# takes the start and end UTC time as string as well as the step in seconds
 def el_az_driver(config):
 	''' Prints azimuth and elevation data out to file
 
@@ -105,12 +102,44 @@ def el_az_driver(config):
 		this_step += timedelta(seconds = config.step)
 	return
 
-
 def view_pr_driver(config):
-	start = datetime.strptime(config.start, config.time_format)
-	view_pr(start, config.dss_data)
+	view_pr(config)
+
+def post_view_pr(view_pr_acts):
+	'''
+	Posts VP activities generated to the plan UI
+	'''
+	api_url = 'http://localhost:8080/v1/graphql' # https://aerie-dev.jpl.nasa.gov:8080/v1/graphql
+	query = '''mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } } '''
+
+	response = requests.post(
+		url=api_url,
+		json={
+		'query': query,
+		 'variables': { "activities": view_pr_acts },
+		},
+		verify=False
+		)
+
+	print("SENT:")
+	print(view_pr_acts)
+
+	print("RESPONSE")
+	print(json.dumps(response.json(), indent=2))
 	
-def view_pr(plan_start, stations):
+def view_pr(config):
+	'''
+	Computes View Periods using Spice geometry finder
+	Tutorial on geometry finder and view periods: https://spiceypy.readthedocs.io/en/main/event_finding.html#find-view-periods
+	'''
+
+	# Configuration Params
+	plan_start = datetime.strptime(config.start, config.time_format)
+	plan_id = config.plan_id
+
+
+	# Variables related to Spce
+	stations = config.dss_data
 	MAXIVL = 10
 	MAXWIN = 2 * MAXIVL
 	target =  '-159'
@@ -126,8 +155,8 @@ def view_pr(plan_start, stations):
 	relate = '>'
 	adjust = 0.0
 	stepsz = 300.0
-	etbeg = spiceypy.str2et( start )
-	etend = spiceypy.str2et( stop  )
+	etbeg = spiceypy.str2et(start)
+	etend = spiceypy.str2et(stop)
 
 	cnfine = stypes.SPICEDOUBLE_CELL(2)
 	view_pr_acts = []
@@ -180,41 +209,15 @@ def view_pr(plan_start, stations):
 			print(f"start: {timestr1}")
 			print(f"end: {timestr2}\n")
 			activity_data = {
-				'arguments' : {'NAIF_spacecraft_ID':'-159', 'station_identifier':antenna, 'Duration': activity_duration},
+				'arguments' : {'spacecraft_ID':-159, 'station_identifier':int(antenna[4:]), 'duration': activity_duration},
 				'plan_id' : 114,
 				'name' : activity_name,
-				'start_offset': elapsed_seconds_since_activity_start,
+				'start_offset': str(elapsed_seconds_since_activity_start),
 				'type': 'DSN_View_Period_Duration'
 			}
 			view_pr_acts.append(activity_data)
-	
-	api_url = 'http://localhost:8080/v1/graphql' # https://aerie-dev.jpl.nasa.gov:8080/v1/graphql
-	query = '''mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } } '''
-	
-	activity_data = {
-	'arguments' : {'spacecraft_ID':-159, 'station_identifier':int(antenna[4:]), 'duration': activity_duration},
-	'plan_id' : 114,
-	'name' : activity_name,
-	'start_offset': '319874.782',
-	'type': 'DSN_View_Period_Duration'
-	}	
 
-	view_pr_acts = [activity_data]
-
-	response = requests.post(
-		url=api_url,
-		json={
-		'query': query,
-		 'variables': { "activities": view_pr_acts },
-		},
-		verify=False
-		)
-
-	print("SENT:")
-	print(view_pr_acts)
-
-	print("RESPONSE")
-	print(json.dumps(response.json(), indent=2))
+	post_view_pr(view_pr_acts)
 
 
 time_format = "%Y-%m-%dT%H:%M:%S.%f"
@@ -223,11 +226,12 @@ end = "2028-05-06T00:00:00.00"
 step_size = 60
 chosen_dss = ['DSS-13','DSS-14', 'DSS-25', 'DSS-26', 'DSS-34', 'DSS-65']
 spacecraft = -159 	# -159 is Clipper
+plan_id = 114
 
-config = python_dss_configuration(time_format, start, end, step_size, chosen_dss, spacecraft)
+config = python_dss_configuration(time_format, start, end, step_size, chosen_dss, spacecraft, plan_id)
 
 # FOR ELEVATION AND AZIMUTH
-#el_az_driver(config)
+el_az_driver(config)
 #config.print_az_el_data()
 
 # FOR VIEW PERIODS
