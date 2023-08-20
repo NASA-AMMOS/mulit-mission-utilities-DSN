@@ -23,6 +23,7 @@ This script is currently set up to compute the azimuth, elevation, and view peri
 3. Update the `chosen_dss` list to reflect the stations for which you want to compute azimuth, elevation, or view periods.
 4. Update the spacecraft ID
 5. Update the plan ID (this can be determined using the UI).
+6. Update the specific kernels for your mission [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/tree/main/python_scripts/libaerie/spice_calcs/kernels).
 
 ### Additional Configuration for View Period Spice Geometry Finder
 The Geometry Finder Spice functions compute the View Period for the specified DSSs and spacecraft. The parameters that can be updated are Spice parameters. The definitions and usage of the Spice functions in this script can be found here (note the python library, SpiceyPy was used in this script):
@@ -32,3 +33,14 @@ The Geometry Finder Spice functions compute the View Period for the specified DS
 * [wnfetd](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/FORTRAN/spicelib/wnfetd)
 * [timout](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/FORTRAN/spicelib/timout.html)
 * [SPICEDOUBLE_CELL](https://spiceypy.readthedocs.io/en/v2.3.1/documentation.html#spiceypy.utils.support_types.SPICEDOUBLE_CELL)
+
+  ### Kernels Needed
+* Leap Seconds (.tls)
+* Solar System Ephemeris (.bsp)
+* Spacecraft Ephemeris (.bsp)
+* DSN Ephemeris (.bsp)
+* Earth Topocentric Frame Kernel (.tf)
+* NAIF PCK (Planetary Constants Kernel) (.tpc)
+* Earth binary PCK (Earth orientation data) (.bpc)
+  
+  
