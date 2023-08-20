@@ -111,5 +111,3 @@ options:
 ### Example runs:
 - ```python3 export_activities.py 25 -p EXPORT..VP -s EXPORT.SAF # Export files for plan ID 25```
 
-## Running al_el_vp.py
-This script is currently set-up to compute the azimuth, elevation, and view periods for multiple DSSs from the point of view of the spacecraft Europa-Clipper, between May 2nd, 2028 and May 5th, 2028.
