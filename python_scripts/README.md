@@ -81,7 +81,7 @@ It's recommended to set the -b option to a value less then 1000 as a large amoun
 
 ## Running export_activities.py
 
-export_activities.py can read a Aerie plan and will write the activities to a single DSN View Period and DSN Station Allocation files.
+export_activities.py can read an Aerie plan and will write the activities to a single DSN View Period and DSN Station Allocation files.
 
 ```sh
 python3 export_activities.py --help
@@ -110,3 +110,4 @@ options:
 
 ### Example runs:
 - ```python3 export_activities.py 25 -p EXPORT..VP -s EXPORT.SAF # Export files for plan ID 25```
+
