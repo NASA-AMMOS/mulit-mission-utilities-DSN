@@ -941,14 +941,14 @@ class GqlInterface(object):
                     event = record["EVENT"]
 
                     # Start of new Viewperiod window, store the start event for the station
-                    if event in ("RISE", "AOS HOR MASK", "AOS SL/RT AXIS 1", "AOS SL/RT AXIS 2"):
+                    if event in ("RISE"):
                         if record["STATION_IDENTIFIER"] not in dsn_vp_durations:
                             dsn_vp_durations[record["STATION_IDENTIFIER"]] = record
                         else:
                             logger.warning("For Viewperiod %s, Station %s already has a start event", record, record["STATION_IDENTIFIER"])
 
                     # End of Viewperiod Window, close the event and calculate duration
-                    elif event in ("SET", "LOS HOR MASK", "LOS SL/RT AXIS 1", "LOS SL/RT AXIS 2"):
+                    elif event in ("SET"):
 
                         close_record = None
 
