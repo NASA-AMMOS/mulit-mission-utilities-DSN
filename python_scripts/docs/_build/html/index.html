@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage &mdash; AERIE DSN Python 1.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/readthedocs-custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="libaerie" href="_autosummary/libaerie.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            AERIE DSN Python
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Home page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_autosummary/libaerie.html">API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">AERIE DSN Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Usage</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="toctree-wrapper compound">
+</div>
+<div class="section" id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="prerequisites-for-development">
+<h2>Prerequisites for Development<a class="headerlink" href="#prerequisites-for-development" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>Install venv for Python 3.9+ and setup a new virtual environment in this directory.</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> mulit-mission-utilities-DSN/python_scripts
+python3 -m venv .venv
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Activate Virtual Environment for Python project</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span> .venv/bin/activate
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Install project dependencies</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3 install -r requirements.txt
+</pre></div>
+</div>
+</div>
+<div class="section" id="running-tests">
+<h2>Running Tests<a class="headerlink" href="#running-tests" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>Activate Virtual Environment</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span> .venv/bin/activate
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Run PyTests to automatically setup tests in ./tests directory</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest
+</pre></div>
+</div>
+</div>
+<div class="section" id="installing-and-packaging-libraries">
+<h2>Installing and packaging libraries<a class="headerlink" href="#installing-and-packaging-libraries" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>PIP can be used with the setup.py script to install libaerie system-wide.</p></li>
+<li><p>Python build can be used to create a PyPi compliant package for upload to a python mirror</p></li>
+</ul>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3 install -e
+</pre></div>
+</div>
+</div>
+<div class="section" id="packaging">
+<h2>Packaging<a class="headerlink" href="#packaging" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 -m build
+</pre></div>
+</div>
+</div>
+<div class="section" id="running-import-activities-py">
+<h2>Running import_activities.py<a class="headerlink" href="#running-import-activities-py" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>import_activities.py can scan DSN View Period and DSN Station Allocation files and add them activities in an existing Aerie Installation.
+
+python3 import_activities.py --help
+usage: import_activities.py <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-p VP<span class="o">]</span> <span class="o">[</span>-s SA<span class="o">]</span> <span class="o">[</span>-a CONNECTION_STRING<span class="o">]</span> <span class="o">[</span>-b BUFFER<span class="o">]</span> <span class="o">[</span>-v VERBOSE<span class="o">]</span> plan_id
+
+positional arguments:
+  plan_id               plan ID to ingest activity directives into
+
+options:
+  -h, --help            show this <span class="nb">help</span> message and <span class="nb">exit</span>
+  -p VP, --vp_file VP   Filepath to a DSN View Period file
+  -s SA, --sa_file SA   Filepath to a DSN Station Allocation file
+  -a CONNECTION_STRING, --connection_string CONNECTION_STRING
+                        http://&lt;ip_address&gt;:&lt;port&gt; connection string to graphql database
+  -b BUFFER, --buffer_length BUFFER
+                        Integer length of the buffer used to parse products, use <span class="k">if</span> parsing large files
+  -v VERBOSE, --verbose VERBOSE
+                        Increased debug output
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-runs">
+<h2>Example runs<a class="headerlink" href="#example-runs" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 import_activities.py <span class="m">25</span> -p INPUT.VP -s INPUT.SAF <span class="c1"># Ingesting one file of each type</span>
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 import_activities.py <span class="m">25</span> -p INPUT1.VP -p INPUT2.VP <span class="c1"># Ingesting multiple files of one type</span>
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 import_activities.py <span class="m">25</span> -p ./INPUT1.VP -p ./INPUT2.VP -s ./INPUT1.SAF -s ./INPUT2.SAF -b <span class="m">500</span> <span class="c1"># Ingesting multiple files of both types inserting 500 activities at a time</span>
+</pre></div>
+</div>
+<p>It’s recommended to set the -b option to a value less then 1000 as a large amount of event data can stress GraphQL</p>
+</div>
+<div class="section" id="running-export-activities-py">
+<h2>Running export_activities.py<a class="headerlink" href="#running-export-activities-py" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>export_activities.py can <span class="nb">read</span> a Aerie plan and will write the activities to a single DSN View Period and DSN Station Allocation files.
+
+python3 export_activities.py --help
+usage: export_activities.py <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>-p VP<span class="o">]</span> <span class="o">[</span>-s SA<span class="o">]</span> <span class="o">[</span>-m MISSION_NAME<span class="o">]</span> <span class="o">[</span>-S SPACECRAFT_NAME<span class="o">]</span> <span class="o">[</span>-d DSN_ID<span class="o">]</span> <span class="o">[</span>-a CONNECTION_STRING<span class="o">]</span> <span class="o">[</span>-b BUFFER<span class="o">]</span> <span class="o">[</span>-v VERBOSE<span class="o">]</span> plan_id
+
+positional arguments:
+  plan_id               plan ID to ingest activity directives into
+
+options:
+  -h, --help            show this <span class="nb">help</span> message and <span class="nb">exit</span>
+  -p VP, --vp_file VP   Filepath to <span class="nb">export</span> target DSN View Period file
+  -s SA, --sa_file SA   Filepath to <span class="nb">export</span> target DSN Station Allocation file
+  -m MISSION_NAME, --mission_name MISSION_NAME
+                        Mission Name <span class="k">for</span> VP and SAF header
+  -S SPACECRAFT_NAME, --spacecraft_name SPACECRAFT_NAME
+                        Spacecraft Name <span class="k">for</span> VP and SAF header
+  -d DSN_ID, --dsn_id DSN_ID
+                        Integer DSN spacecraft number <span class="k">for</span> VP and SAF header
+  -a CONNECTION_STRING, --connection_string CONNECTION_STRING
+                        http://&lt;ip_address&gt;:&lt;port&gt; connection string to graphql database
+  -b BUFFER, --buffer_length BUFFER
+                        Integer length of the buffer used to parse products, use <span class="k">if</span> parsing large files
+  -v VERBOSE, --verbose VERBOSE
+                        Increased debug output
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>Example runs:<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 export_activities.py <span class="m">25</span> -p EXPORT..VP -s EXPORT.SAF <span class="c1"># Export files for plan ID 25</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="_autosummary/libaerie.html" class="btn btn-neutral float-right" title="libaerie" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

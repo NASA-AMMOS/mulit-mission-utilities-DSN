@@ -11,6 +11,7 @@ import static gov.nasa.jpl.aerie.merlin.framework.ModelActions.delay;
 public class DSN_View_Period_Duration {
 
   @Parameter
+
   public String mission_name = "";
 
   @Parameter
