@@ -11,10 +11,23 @@ import static gov.nasa.jpl.aerie.merlin.framework.ModelActions.delay;
 public class DSN_View_Period_Duration {
 
   @Parameter
-  public Integer spacecraft_ID = 0;
+
+  public String mission_name = "";
+
+  @Parameter
+  public String spacecraft_name = "";
+
+  @Parameter
+  public Integer NAIF_spacecraft_ID = 0;
+
+  @Parameter
+  public Integer dsn_spacecraft_ID = 0;
 
   @Parameter
   public Integer station_identifier  = 0;
+
+  @Parameter
+  public Integer pass_number  = 0;
 
   @Parameter
   public Duration duration;

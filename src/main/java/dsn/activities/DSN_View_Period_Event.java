@@ -8,8 +8,8 @@ import gov.nasa.jpl.aerie.merlin.framework.annotations.Export.Parameter;
 import gov.nasa.jpl.aerie.merlin.protocol.types.Duration;
 import static gov.nasa.jpl.aerie.merlin.framework.ModelActions.delay;
 
-@ActivityType("DSN_View_Period")
-public class DSN_View_Period {
+@ActivityType("DSN_View_Period_Event")
+public class DSN_View_Period_Event {
   @Parameter
   public String mission_name = "";
 
@@ -50,8 +50,6 @@ public class DSN_View_Period {
   public Duration rtlt = Duration.HOUR;
 
   @EffectModel
-  @ActivityType.ControllableDuration(parameterName = "rtlt")
   public void run(final Mission mission) {
-    delay(rtlt);
   }
 }

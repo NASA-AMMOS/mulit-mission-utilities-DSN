@@ -1,4 +1,4 @@
-## Prerequisites
+## Prerequisites for Development
 - Install venv for Python 3.9+ and setup a new virtual enviornment in this directory.
 
 ```sh
@@ -16,6 +16,36 @@ source .venv/bin/activate
 
 ```sh
 pip3 install -r requirements.txt
+```
+
+## Running Tests
+
+- Activate Virtual Environment
+
+```sh
+source .venv/bin/activate
+```
+
+- Run PyTests to automatically setup tests in ./tests directory
+
+```sh
+pytest
+```
+
+## Installing and packaging libraries
+- PIP can be used with the setup.py script to install libaerie system-wide.
+- Python build can be used to create a PyPi compliant package for upload to a python mirror
+
+### Installation
+
+```sh
+pip3 install -e
+```
+
+### Packaging
+
+```sh
+python3 -m build
 ```
 
 ## Running import_activities.py
@@ -51,7 +81,7 @@ It's recommended to set the -b option to a value less then 1000 as a large amoun
 
 ## Running export_activities.py
 
-export_activities.py can read a Aerie plan and will write the activities to a single DSN View Period and DSN Station Allocation files.
+export_activities.py can read an Aerie plan and will write the activities to a single DSN View Period and DSN Station Allocation files.
 
 ```sh
 python3 export_activities.py --help
@@ -80,3 +110,4 @@ options:
 
 ### Example runs:
 - ```python3 export_activities.py 25 -p EXPORT..VP -s EXPORT.SAF # Export files for plan ID 25```
+
