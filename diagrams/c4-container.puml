@@ -1,0 +1,26 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+title Container Diagram for Aerie Multi-Mission Utilities
+
+
+Person(planner, "Planner", "A mission/instrument team planner")
+
+Container_Boundary(mutliMissionBoundary, "Multi-Mission Utilities") {
+  Container(dsn, "DSN", "Python and Java", "Provides DSN and Telecom resources, activities, and methods")
+  Container(gnc, "GNC", "Python and Java", "Provides GNC and navigation related resources, activities, and methods")
+  Container(power, "Power", "Python and Java", "Provides Power related resources, activities, and methods")
+  Container(thermal, "Thermal", "Python and Java", "Provides Thermal related resources, activities, and methods")
+  Container(propulsion, "Prop", "Python and Java", "Provides Propulsion related resources, activities, and methods")
+  Container(fp, "Fault Protection", "Python and Java", "Provides Fault Protection related resources, activities, and methods")
+  Container(avs, "Avionics", "Python and Java", "Provides Avionics related resources, activities, and methods")
+}
+
+
+System(aerie, "Aerie", "Provides mission activity and sequence simulation and resource analysis")
+
+
+Rel_D(planner, aerie, "Views and edits plans, resource profiles, constraints")
+
+Rel_D(planner, mutliMissionBoundary, "Imports library methods  plan")
+
+@enduml

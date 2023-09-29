@@ -1,0 +1,26 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+title Component Diagram for Aerie DSN Multi-Mission Utility
+
+
+Person(planner, "Planner", "A mission/instrument team planner")
+
+Container_Boundary(dsn_mutliMissionBoundary, "DSN Multi-Mission Utility") {
+  Component(saf_parser, "Station Allocation File (SAF) Parser", "Python", "Parses mission SAF files and retrieves DSN related information")
+  Component(vp_parser, "View Period (VP) Parser", "Python", "Parses mission VP files and retrieves DSN related information")
+  Component(poster, "Activity Mutator", "Python, JSON", "Creates activity JSON with parameters populated with data from parsers")
+ }
+Container(hasura, "Hasura", "Third party, yaml config", "Receives and resolves requests against the Aerie GraphQL schema")
+
+System(scheduling, "DSN Multi-Mission Utility Scheduling Rules", "")
+System(multiMissionModel, "DSN Multi-Mission Utility", "DSN multi-mission activities, resources, and supporting software")
+
+
+Rel_D(planner, scheduling, "Imports library methods to plan")
+Rel_D(multiMissionModel, poster, "Decides how to design mutator methods")
+Rel_D(planner, dsn_mutliMissionBoundary, "Imports library methods  plan")
+Rel_D(saf_parser, poster, "Provides data from SAF to")
+Rel_D(vp_parser, poster, "Provides data from VP to")
+Rel_D(poster, hasura, "API activity mutations", "GraphQL")
+Rel_D(poster, hasura, "API activity mutations", "GraphQL")
+@enduml

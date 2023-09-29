@@ -1,0 +1,50 @@
+@startuml
+
+skin rose
+
+title Activities Created with Data from Station Allocation and View Period Files
+
+class DSN_Track {
+  -String mission_name
+  -String spacecraft_name
+  -Int NAIF_spacecraft_ID
+  -Int dsn_spacecraft_ID
+  -Enum: pass_type
+  -String: SOA 
+  -String: BOT
+  -String: EOT
+  -String: EOA
+  -String: antenna_ID
+  -Duration duration_of_activity
+  -String start_of_track
+  -Duration duration_of_track
+  +void run(final Mission mission)
+}
+note bottom of DSN_Track: Parameters populated from SAF 
+/'
+note bottom of DSN_Track: SOA is start of activity
+note bottom of DSN_Track: BOT is beginning of track
+note bottom of DSN_Track: EOT is end of track
+note bottom of DSN_Track: EOA is end of activity
+note bottom of DSN_Track: Pass type is pass, DDOR, etc.
+'/
+
+class DSN_View_Period {
+  -String mission_name
+  -String spacecraft_name
+  -Int NAIF_spacecraft_ID
+  -Int dsn_spacecraft_ID
+  -String: station_receive_time_UTC
+  -Enum: viewperiod_event
+  -Int: station_identifier
+  -Int: pass_number
+  -Float: azimuth_degrees
+  -Float: elevation_degrees
+  -Float: lha_X_degrees
+  -Float: dec_Y_degrees
+  -Duration: rtlt 
+  +void run(final Mission mission)
+}
+note bottom of DSN_View_Period: Parameters populated from VP 
+
+@enduml

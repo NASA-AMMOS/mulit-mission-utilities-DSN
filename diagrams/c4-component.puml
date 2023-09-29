@@ -1,0 +1,54 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+title Component Diagram for Aerie DSN Multi-Mission Model
+
+
+Person(planner, "Planner", "A mission/instrument team planner")
+
+Container_Boundary(aerie, "Aerie Multi-Mission Utilities") {
+  Component(file_loader, "External File Loader", "Java", "Contains URL or file path of external files")
+
+
+
+Container_Boundary(dsn_mutliMissionBoundary, "DSN Multi-Mission Model") {
+  Component(saf_parser, "Station Allocation File (SAF) Parser", "Python", "Parses mission SAF files and retrieves DSN related information")
+  Component(vp_parser, "View Period (VP) Parser", "Python", "Parses mission VP files and retrieves DSN related information")
+  Component(saf_poster, "SAF Activity Mutator", "Python", "Creates activity JSON with parameters populated with data from parser")
+  Component(vp_poster, "VP Activity Mutator", "Python", "aCreates activity JSON with parameters populated with data from parser")
+  Component(scheduler, "DSN Multi-Mission Utility Scheduling Rules", "TypeScript", "An eDSL that allows users to create scheduling rules")
+  Component(dsn_model, "DSN Multi-Mission Model", "Java", "DSN multi-mission activities,resources, and supporting software")
+ }
+ 
+Container_Boundary(geo_ut, "Geometry Multi-Mission Utilities") {
+  Component(geo_calcs, "Geometry Multi-Mission Computations", "Python", "Geometric computations such as line of sight and occultations")
+  Component(geo_model, "Geometry Multi-Mission Model", "Java", "Geometry multi-mission activities, resources, and supporting software")
+}
+
+ 
+ 
+Container(kernels, "SPICE Kernels", "SPICE format", "Mission specific ephemeris data") 
+Container(hasura, "Hasura", "Third party, yaml config", "Receives and resolves requests against the Aerie GraphQL schema")
+
+
+Rel_D(planner, kernels, "Obtains mission speicifc SPICE kernels")
+Rel_D(planner, aerie, "Imports library methods")
+Rel_D(planner, file_loader, "Provides ephemeris data,.SAF file, and can provide .VP file to")
+
+Rel_D(file_loader, geo_calcs, "Provides ephemeris to")
+Rel_D(geo_model, file_loader, "Provides View Period and Station Allocation activity structure data to")
+Rel_D(file_loader, dsn_mutliMissionBoundary, "Provides .VP and .SAF to")
+
+Rel_D(saf_parser, saf_poster, "Provides data from SAF to")
+Rel_D(vp_parser, vp_poster, "Provides data from VP to")
+Rel_D(vp_poster, hasura, "API activity mutations", "GraphQL")
+Rel_D(saf_poster, hasura, "API activity mutations", "GraphQL")
+
+Rel_D(dsn_model, saf_poster, "Defines JSON activity format")
+Rel_D(dsn_model, vp_poster, "Defines JSON activity format")
+Rel_D(dsn_model, scheduler, "Creates activities and resources for reference by")
+
+
+
+
+@enduml
