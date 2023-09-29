@@ -1,12 +1,14 @@
-# Instructions for Aerie Mission Model Template and DSN Multi-Mission Utilities
+# Instructions for Building Aerie Mission Model Template and DSN Multi-Mission Utilities and Using DSN Scripts
 
-Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#aerie-mission-model-template) for Aerie Mission Model Template.
+Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#aerie-mission-model-template) for Aerie Mission Model Template Installation, Building, and Testing Instructions.
 
-Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#dsn-multi-mission-utilities) for DSN Multi-Mission Utilities. 
+Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#dsn-multi-mission-utilities) for DSN Multi Mission Utilities Installation, Building, and Testing Instructions. 
 
-Click [here](Click [here]([DSN Multi-Mission Utilities](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#dsn-multi-mission-utilities)) for DSN Multi-Mission Utilities. ) for DSN Multi-Mission Utilities azimuth and elevation computations. 
+Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#running-dsn-multi-mission-utilities-import_activitiespy) for DSN Multi-Mission Utilities SAF and VP Export and Import Python script instructions.
 
-## Aerie Mission Model Template
+Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#computing-aziumuth-and-elevation-using-dsn-multi-mission-utilities) for DSN Multi-Mission Utilities azimuth and elevation Python script instructions. 
+
+# Aerie Mission Model Template Installation, Building, and Testing Instructions
 
 This repo provides an Aerie mission model template for a fictitious mission called [FireSat](http://www.sme-smad.com/). It is meant as a starting point for building a new mission model in Aerie.
 
@@ -49,7 +51,7 @@ To run unit tests under [./src/test](./src/test) against your mission model you 
 ./gradlew test
 ```
 
-## DSN Multi Mission Utilities
+# DSN Multi Mission Utilities Installation, Building, and Testing Instructions
 This repo provides DSN multi-mission utilities. It provides a prototype of geometric computations for View Periods, and the ingestion and export of SAF and VP files. 
 
 ### Prerequisites for DSN Multi-Mission Utilities Development
@@ -102,7 +104,7 @@ pip3 install -e
 python3 -m build
 ```
 
-### Running DSN Multi-Mission Utilities import_activities.py
+# Running DSN Multi-Mission Utilities import_activities.py
 
 import_activities.py can scan DSN View Period and DSN Station Allocation files and add them activities in an existing Aerie Installation.
 
@@ -165,7 +167,7 @@ options:
 ### Example runs:
 - ```python3 export_activities.py 25 -p EXPORT..VP -s EXPORT.SAF # Export files for plan ID 25```
 
-### Computing Aziumuth and Elevation using DSN Multi-Mission Utilities
+# Computing Aziumuth and Elevation using DSN Multi-Mission Utilities
 Use the [az_el.py script](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/blob/793ec1f0da746009ae4002a0ffa191baf65d40e4/python_scripts/libaerie/spice_calcs/az_el.py) to calculate the azimuth and elevation of DSSs from the p.o.v. of your spacecraft. This script is currently set up to compute the azimuth, elevation, and view periods for multiple DSSs from the point of view of the spacecraft Europa-Clipper, between May 2nd, 2028 and May 5th, 2028.
 
 ### Computing Azimuth and Elevation for Multiple DSS and Viewing in the Aerie UI
@@ -201,9 +203,8 @@ The Geometry Finder Spice functions compute the View Period for the specified DS
 * [timout](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/FORTRAN/spicelib/timout.html)
 * [SPICEDOUBLE_CELL](https://spiceypy.readthedocs.io/en/v2.3.1/documentation.html#spiceypy.utils.support_types.SPICEDOUBLE_CELL)
 
-
-  ### Kernels Needed
-  You can use the provided [Meta-Kernel](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/blob/main/python_scripts/libaerie/spice_calcs/erotat.tm) and kernels in this repository, or you can use your own. There are the kernels needed for the geometric computations.
+### Kernels Needed
+You can use the provided [Meta-Kernel](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/blob/main/python_scripts/libaerie/spice_calcs/erotat.tm) and kernels in this repository, or you can use your own. There are the kernels needed for the geometric computations.
 * Leap Seconds (.tls)
 * Solar System Ephemeris (.bsp)
 * Spacecraft Ephemeris (.bsp)
