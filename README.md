@@ -1,12 +1,12 @@
 # Instructions for Building Aerie Mission Model Template and DSN Multi-Mission Utilities and Using DSN Scripts
 
-Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#aerie-mission-model-template) for Aerie Mission Model Template Installation, Building, and Testing Instructions.
+Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN#aerie-mission-model-template-installation-building-and-testing-instructions) for Aerie Mission Model Template Installation, Building, and Testing Instructions.
 
-Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#dsn-multi-mission-utilities) for DSN Multi Mission Utilities Installation, Building, and Testing Instructions. 
+Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN#dsn-multi-mission-utilities-installation-building-and-testing-instructions) for DSN Multi Mission Utilities Installation, Building, and Testing Instructions. 
 
-Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#running-dsn-multi-mission-utilities-import_activitiespy) for DSN Multi-Mission Utilities SAF and VP Export and Import Python script instructions.
+Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN#running-dsn-multi-mission-utilities-import_activitiespy) for DSN Multi-Mission Utilities SAF and VP Export and Import Python script instructions.
 
-Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN/edit/main/README.md#computing-aziumuth-and-elevation-using-dsn-multi-mission-utilities) for DSN Multi-Mission Utilities azimuth and elevation Python script instructions. 
+Click [here](https://github.com/NASA-AMMOS/multi-mission-utilities-DSN#computing-aziumuth-and-elevation-using-dsn-multi-mission-utilities) for DSN Multi-Mission Utilities azimuth and elevation Python script instructions. 
 
 # Aerie Mission Model Template Installation, Building, and Testing Instructions
 
