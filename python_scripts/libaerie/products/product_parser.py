@@ -24,7 +24,7 @@ class Decoder(object):
 
     """
 
-    def __init__(self, filename: Union[str | io.IOBase]):
+    def __init__(self, filename: Union[str, io.IOBase]):
         """
         Initialize a Decoder which handles the generic functionality of Decoder classes.
 
@@ -92,7 +92,7 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
 
     EVENT_RECORD_REGEX = "(?P<TIME>.{15}).(?P<EVENT>.{16}).(?P<SPACECRAFT_IDENTIFIER>.{3}).(?P<STATION_IDENTIFIER>.{2}).(?P<PASS>.{4}).(?P<AZIMUTH>.{5}).(?P<ELEVATION>.{5}).(?P<AZ_LHA_X>.{5}).(?P<EL_DEC_Y>.{5}).(?P<RTLT>.{10})"
 
-    def __init__(self, filename: Union[str | io.IOBase]):
+    def __init__(self, filename: Union[str, io.IOBase]):
         """
         Initialize a DsnViewPeriodPredLegacyDecoder which reads information from DSN View Period files.
 
@@ -249,7 +249,7 @@ class DsnStationAllocationFileDecoder(Decoder):
 
     EVENT_RECORD_REGEX = "(?P<CHANGE_INDICATOR>.)(?P<YY>.{2}).(?P<DOY>.{3}).(?P<SOA>.{4}).(?P<BOT>.{4}).(?P<EOT>.{4}).(?P<EOA>.{4}).(?P<ANTENNA_ID>.{6}).(?P<PROJECT_ID>.{5}).(?P<DESCRIPTION>.{16}).(?P<PASS>.{4}).(?P<CONFIG_CODE>.{6})(?P<SOE_FLAG>.).(?P<WORK_CODE_CAT>.{3}).(?P<RELATE>.)."
 
-    def __init__(self, filename: Union[str | io.IOBase]):
+    def __init__(self, filename: Union[str, io.IOBase]):
         """
         Initialize a DsnStationAllocationFileDecoder which reads information from DSN Station Allocation files.
 
@@ -412,7 +412,7 @@ class Encoder(object):
   EVENT_KEYS = []
   SFDU_HEADER = ()
 
-  def __init__(self, filename: Union[str | io.IOBase], header_dict:dict=None):
+  def __init__(self, filename: Union[str, io.IOBase], header_dict:dict=None):
     """
     Initialize an Encoder which is meant to read output from the AERIE database and encode it into a report file.
 
