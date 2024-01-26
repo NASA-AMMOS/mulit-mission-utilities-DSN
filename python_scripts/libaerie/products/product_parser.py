@@ -847,7 +847,7 @@ class GqlInterface(object):
 
     INSERT_ACTIVITY_QUERY = 'mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } }'
     READ_PLAN_QUERY = 'query getPlan($id: Int) {plan(where: {id: {_eq: $id}}) {id name model_id start_time duration} }'
-    READ_ACTIVITY_QUERY = 'query getActivity($type: String, $plan_id: Int) {activity_directive(where: {type: {_like: $type}, plan_id: {_eq: $plan_id}}) {start_offset id tags type name metadata arguments} }'
+    READ_ACTIVITY_QUERY = 'query getActivity($type: String, $plan_id: Int) {activity_directive(where: {type: {_like: $type}, plan_id: {_eq: $plan_id}}) {start_offset id type name metadata arguments} }'
 
     DEFAULT_CONNECTION_STRING = 'http://localhost:8080/v1/graphql'
 
