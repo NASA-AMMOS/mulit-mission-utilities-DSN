@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 import datetime
+from getpass import getpass, getuser
 from libaerie.products.product_parser import GqlInterface, DsnStationAllocationFileEncoder, DsnViewPeriodPredLegacyEncoder
 
 
@@ -16,12 +17,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument('plan_id', type=int, help="plan ID to ingest activity directives into")
 
 # Optional arguments
+parser.add_argument('-u', '--user', dest='username', default=getuser(), type=str, help="Aerie username")
+parser.add_argument('-pw', '--password', dest='password', default=getuser(), type=str, help="Password (if not provided user will be prompted to enter the password")
 parser.add_argument('-p', '--vp_file', dest='vp', default=DEFAULT_FILE_BASE + ".VP", type=str, help="Filepath to export target DSN View Period file")
 parser.add_argument('-s', '--sa_file', dest='sa', default=DEFAULT_FILE_BASE + ".SAF", type=str, help="Filepath to export target DSN Station Allocation file")
 parser.add_argument('-m', '--mission_name', dest='mission_name', default="", type=str, help="Mission Name for VP and SAF header")
 parser.add_argument('-S', '--spacecraft_name', dest='spacecraft_name', default="", type=str, help="Spacecraft Name for VP and SAF header")
 parser.add_argument('-d', '--dsn_id', dest='dsn_id', default=0, type=int, help="Integer DSN spacecraft number for VP and SAF header")
 parser.add_argument('-a', '--connection_string', default=GqlInterface.DEFAULT_CONNECTION_STRING, help="http://<ip_address>:<port> connection string to graphql database")
+parser.add_argument('-g', '--gateway_connection_string', default=GqlInterface.DEFAULT_GATEWAY_CONNECTION_STRING, help="http://<ip_address>:<port> connection string to Aerie gateway")
 parser.add_argument('-b', '--buffer_length', default=None, dest='buffer', type=int, help="Integer length of the buffer used to parse products, use if parsing large files")
 parser.add_argument('-v', '--verbose', action='store_true', help="Increased debug output")
 
@@ -39,8 +43,13 @@ if args.verbose is True:
 
 logger = logging.getLogger(__name__)
 
+password = args.password
+if password is None:
+    password = getpass("Enter Password: ")
+
 # Setup GQL
-gql = GqlInterface(connection_string=args.connection_string)
+gql = GqlInterface(connection_string=args.connection_string, gateway_connection_string=args.gateway_connection_string,
+                   username=args.username, password=password)
 plan_start, plan_end = gql.get_plan_info_from_id(plan_id)
 
 saf_header = {

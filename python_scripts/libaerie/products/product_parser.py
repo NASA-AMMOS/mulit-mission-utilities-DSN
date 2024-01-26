@@ -843,6 +843,8 @@ class GqlInterface(object):
     :vartype READ_ACTIVITY_QUERY: str
     :cvar DEFAULT_CONNECTION_STRING: Default connection string of Localhost if an alternate is not provided
     :vartype DEFAULT_CONNECTION_STRING: str
+    :cvar DEFAULT_GATEWAY_STRING: Default connection string of Localhost if an alternate is not provided
+    :vartype DEFAULT_GATEWAY_STRING: str
     """
 
     INSERT_ACTIVITY_QUERY = 'mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } }'
@@ -850,8 +852,10 @@ class GqlInterface(object):
     READ_ACTIVITY_QUERY = 'query getActivity($type: String, $plan_id: Int) {activity_directive(where: {type: {_like: $type}, plan_id: {_eq: $plan_id}}) {start_offset id type name metadata arguments} }'
 
     DEFAULT_CONNECTION_STRING = 'http://localhost:8080/v1/graphql'
+    DEFAULT_GATEWAY_CONNECTION_STRING = 'http://localhost:9000/auth/login'
 
-    def __init__(self, connection_string: str=DEFAULT_CONNECTION_STRING):
+    def __init__(self, username: str, password: str, connection_string: str=DEFAULT_CONNECTION_STRING,
+                 gateway_connection_string: str=DEFAULT_GATEWAY_CONNECTION_STRING):
         """
         Initialize an GqlInterface which retreives and inserts information into the AERIE DB.
 
@@ -862,8 +866,23 @@ class GqlInterface(object):
         logger = logging.getLogger(__name__)
 
         self.__connection_string = connection_string
+        self.__sso_token = self.get_sso_token(gateway_connection_string, username, password)
 
         logger.info("GraphQL Config: api_conn: %s", connection_string)
+
+    def get_sso_token(self, gateway_url:str, username:str, password:str) -> str:
+        """Login to the Aerie Gateway and get an SSO Token"""
+        auth_resp = requests.post(
+            url=gateway_url,
+            json={"username": username, "password": password}
+        )
+        token = auth_resp.json()["token"]
+        if not token:
+            raise RuntimeError("Failed to authenticate with Aerie gateway")
+        return token
+
+    def get_jwt_header(self, token):
+        return {"Authorization": f"Bearer {token}", "x-hasura-role": "viewer"} if token else {}
 
     def get_plan_info_from_id(self, plan_id: int) -> tuple[datetime.datetime, datetime.datetime]:
         """
@@ -1054,6 +1073,7 @@ class GqlInterface(object):
                 'query': self.INSERT_ACTIVITY_QUERY,
                 'variables': {"activities": activities},
             },
+            headers=self.get_jwt_header(self.__sso_token),
             verify=False
         )
         logger.debug("create_activities: %s", json.dumps(response.json(), indent=2))
@@ -1085,6 +1105,7 @@ class GqlInterface(object):
             'type': activity_type
           },
         },
+        headers=self.get_jwt_header(self.__sso_token),
         verify=False
       )
       r = response.json()
@@ -1113,6 +1134,7 @@ class GqlInterface(object):
             'id': id
           },
         },
+        headers=self.get_jwt_header(self.__sso_token),
         verify=False
       )
 
