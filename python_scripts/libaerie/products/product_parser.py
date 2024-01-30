@@ -24,7 +24,7 @@ class Decoder(object):
 
     """
 
-    def __init__(self, filename: Union[str | io.IOBase]):
+    def __init__(self, filename: Union[str, io.IOBase]):
         """
         Initialize a Decoder which handles the generic functionality of Decoder classes.
 
@@ -92,7 +92,7 @@ class DsnViewPeriodPredLegacyDecoder(Decoder):
 
     EVENT_RECORD_REGEX = "(?P<TIME>.{15}).(?P<EVENT>.{16}).(?P<SPACECRAFT_IDENTIFIER>.{3}).(?P<STATION_IDENTIFIER>.{2}).(?P<PASS>.{4}).(?P<AZIMUTH>.{5}).(?P<ELEVATION>.{5}).(?P<AZ_LHA_X>.{5}).(?P<EL_DEC_Y>.{5}).(?P<RTLT>.{10})"
 
-    def __init__(self, filename: Union[str | io.IOBase]):
+    def __init__(self, filename: Union[str, io.IOBase]):
         """
         Initialize a DsnViewPeriodPredLegacyDecoder which reads information from DSN View Period files.
 
@@ -249,7 +249,7 @@ class DsnStationAllocationFileDecoder(Decoder):
 
     EVENT_RECORD_REGEX = "(?P<CHANGE_INDICATOR>.)(?P<YY>.{2}).(?P<DOY>.{3}).(?P<SOA>.{4}).(?P<BOT>.{4}).(?P<EOT>.{4}).(?P<EOA>.{4}).(?P<ANTENNA_ID>.{6}).(?P<PROJECT_ID>.{5}).(?P<DESCRIPTION>.{16}).(?P<PASS>.{4}).(?P<CONFIG_CODE>.{6})(?P<SOE_FLAG>.).(?P<WORK_CODE_CAT>.{3}).(?P<RELATE>.)."
 
-    def __init__(self, filename: Union[str | io.IOBase]):
+    def __init__(self, filename: Union[str, io.IOBase]):
         """
         Initialize a DsnStationAllocationFileDecoder which reads information from DSN Station Allocation files.
 
@@ -412,7 +412,7 @@ class Encoder(object):
   EVENT_KEYS = []
   SFDU_HEADER = ()
 
-  def __init__(self, filename: Union[str | io.IOBase], header_dict:dict=None):
+  def __init__(self, filename: Union[str, io.IOBase], header_dict:dict=None):
     """
     Initialize an Encoder which is meant to read output from the AERIE database and encode it into a report file.
 
@@ -843,15 +843,19 @@ class GqlInterface(object):
     :vartype READ_ACTIVITY_QUERY: str
     :cvar DEFAULT_CONNECTION_STRING: Default connection string of Localhost if an alternate is not provided
     :vartype DEFAULT_CONNECTION_STRING: str
+    :cvar DEFAULT_GATEWAY_STRING: Default connection string of Localhost if an alternate is not provided
+    :vartype DEFAULT_GATEWAY_STRING: str
     """
 
     INSERT_ACTIVITY_QUERY = 'mutation InsertActivities($activities: [activity_directive_insert_input!]!) {insert_activity_directive(objects: $activities) {returning {id name } } }'
     READ_PLAN_QUERY = 'query getPlan($id: Int) {plan(where: {id: {_eq: $id}}) {id name model_id start_time duration} }'
-    READ_ACTIVITY_QUERY = 'query getActivity($type: String, $plan_id: Int) {activity_directive(where: {type: {_like: $type}, plan_id: {_eq: $plan_id}}) {start_offset id tags type name metadata arguments} }'
+    READ_ACTIVITY_QUERY = 'query getActivity($type: String, $plan_id: Int) {activity_directive(where: {type: {_like: $type}, plan_id: {_eq: $plan_id}}) {start_offset id type name metadata arguments} }'
 
     DEFAULT_CONNECTION_STRING = 'http://localhost:8080/v1/graphql'
+    DEFAULT_GATEWAY_CONNECTION_STRING = 'http://localhost:9000/auth/login'
 
-    def __init__(self, connection_string: str=DEFAULT_CONNECTION_STRING):
+    def __init__(self, username: str, password: str, connection_string: str=DEFAULT_CONNECTION_STRING,
+                 gateway_connection_string: str=DEFAULT_GATEWAY_CONNECTION_STRING):
         """
         Initialize an GqlInterface which retreives and inserts information into the AERIE DB.
 
@@ -862,8 +866,23 @@ class GqlInterface(object):
         logger = logging.getLogger(__name__)
 
         self.__connection_string = connection_string
+        self.__sso_token = self.get_sso_token(gateway_connection_string, username, password)
 
         logger.info("GraphQL Config: api_conn: %s", connection_string)
+
+    def get_sso_token(self, gateway_url:str, username:str, password:str) -> str:
+        """Login to the Aerie Gateway and get an SSO Token"""
+        auth_resp = requests.post(
+            url=gateway_url,
+            json={"username": username, "password": password}
+        )
+        token = auth_resp.json()["token"]
+        if not token:
+            raise RuntimeError("Failed to authenticate with Aerie gateway")
+        return token
+
+    def get_jwt_header(self, token):
+        return {"Authorization": f"Bearer {token}", "x-hasura-role": "viewer"} if token else {}
 
     def get_plan_info_from_id(self, plan_id: int) -> tuple[datetime.datetime, datetime.datetime]:
         """
@@ -1054,6 +1073,7 @@ class GqlInterface(object):
                 'query': self.INSERT_ACTIVITY_QUERY,
                 'variables': {"activities": activities},
             },
+            headers=self.get_jwt_header(self.__sso_token),
             verify=False
         )
         logger.debug("create_activities: %s", json.dumps(response.json(), indent=2))
@@ -1085,6 +1105,7 @@ class GqlInterface(object):
             'type': activity_type
           },
         },
+        headers=self.get_jwt_header(self.__sso_token),
         verify=False
       )
       r = response.json()
@@ -1113,6 +1134,7 @@ class GqlInterface(object):
             'id': id
           },
         },
+        headers=self.get_jwt_header(self.__sso_token),
         verify=False
       )
 
